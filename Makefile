@@ -28,3 +28,6 @@ datasets:
 	rm Datasets/cifar-10-python.tar.gz
 	# Move the extracted files to the Datasets directory
 	mv cifar-10-batches-py Datasets/
+
+a1:
+	python3 Assignment1/Assignment1.py
