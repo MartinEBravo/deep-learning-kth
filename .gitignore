@@ -3,3 +3,4 @@
 
 Datasets
 .ruff_cache
+**/build/

@@ -7,8 +7,8 @@ def ComputeGradsWithTorch(X, y, network_params):
     Xt = torch.from_numpy(X)
 
     # will be computing the gradient w.r.t. these parameters
-    W = torch.tensor(network_params["W"], requires_grad=True)
-    b = torch.tensor(network_params["b"], requires_grad=True)
+    W = torch.tensor(network_params["W"], requires_grad=True, dtype=torch.float64)
+    b = torch.tensor(network_params["b"], requires_grad=True, dtype=torch.float64)
 
     N = X.shape[1]
 
@@ -27,7 +27,8 @@ def ComputeGradsWithTorch(X, y, network_params):
 
     # extract the computed gradients and make them numpy arrays
     grads = {}
-    grads["W"] = W.grad.numpy()
-    grads["b"] = b.grad.numpy()
+    if W.grad and b.grad:
+        grads["W"] = W.grad.numpy()
+        grads["b"] = b.grad.numpy()
 
     return grads
