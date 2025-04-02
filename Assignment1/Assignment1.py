@@ -1,13 +1,17 @@
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+from torch import Tensor
+
+import pickle
+from typing import Tuple
 
 
 def display_cifar_10_examples(
-    cifar_dir: str = "./Datasets/cifar-10-batches-py", ni: int = 5
+    cifar_dir: str = "./Datasets/cifar-10-batches-py/data_batch_1", ni: int = 5
 ) -> None:
     # Load a batch of training data
-    with open(cifar_dir + "/data_batch_1", "rb") as fo:
+    with open(cifar_dir, "rb") as fo:
         dict = pickle.load(fo, encoding="bytes")
     # Extract the image data and cast to float from the dict dictionary
     X = dict[b"data"].astype(np.float64) / 255.0
@@ -24,24 +28,35 @@ def display_cifar_10_examples(
     plt.show()
 
 
-def load_batch(filename: str) -> tuple:
+def load_batch(cifar_dir: str) -> Tuple[Tensor, Tensor, Tensor]:
     """
-    Retrieves the dataset and converts it to torch tensor
+    Retrieves the dataset and converts it to Tensors.
 
     Args:
         filename (str): File path to the Dataset
     Returns:
-        X (torch.tensor): Tensor of dimensions
-        Y (torch.tensor): Tensor of dimensions
-        y (torch.tensor): Tensor of dimensions
+        X (torch.Tensor): Tensor of size (d,n) of type torch.float32
+        Y (torch.Tensor): Tensor of size (K,n) of type torch.float32
+        y (torch.Tensor): Tensor of size (n,1) of type torch.float32
     """
-    X = 0
-    Y = 0
-    y = 0
+    with open(cifar_dir, "rb") as fo:
+        dict = pickle.load(fo, encoding="bytes")
+    d = 1
+    n = 1
+    K = 1
+    X = torch.Tensor()
+    Y = torch.Tensor()
+    y = torch.Tensor()
 
+    assert X.shape == (d, n), "Dimensions invalid"
+    assert Y.shape == (K, n), "Dimensions invalid"
+    assert y.shape == (n,), "Dimensions invalid"
     return X, Y, y
 
 
 if __name__ == "__main__":
     # Visualizing dataset
+    train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
+    visualization_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
+    test_dir = "./Datasets/cifar-10-batches-py/test_batch"
     display_cifar_10_examples()
