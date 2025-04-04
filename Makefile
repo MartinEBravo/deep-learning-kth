@@ -29,5 +29,5 @@ datasets:
 	# Move the extracted files to the Datasets directory
 	mv cifar-10-batches-py Datasets/
 
-a1:
+run:
 	python3 Assignment1/Assignment1.py
