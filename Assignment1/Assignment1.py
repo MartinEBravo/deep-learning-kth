@@ -333,6 +333,24 @@ def flip_images(X):
     return X[inds_flip, :]
 
 
+def plot_histogram_correctness(P, y_true, name):
+    y_pred = np.argmax(P, axis=0)
+    probs_correct_class = P[y_true, np.arange(P.shape[1])]
+
+    correct_mask = y_pred == y_true
+    incorrect_mask = ~correct_mask
+
+    plt.hist(probs_correct_class[correct_mask], bins=30, alpha=0.7, label="Correct")
+    plt.hist(probs_correct_class[incorrect_mask], bins=30, alpha=0.7, label="Incorrect")
+    plt.xlabel("Predicted Probability for True Class")
+    plt.ylabel("Count")
+    plt.title(f"Histogram of True Class Probabilities ({name})")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"reports/imgs/assignment1_histogram_correctness_{name}.png")
+    plt.close()
+
+
 def run_experiment(
     X_train,
     Y_train,
@@ -620,10 +638,31 @@ def third_setup():
         loss_type="binary_cross_entropy",
         activation="sigmoid",
     )
+    net = init_weights()
+    # Train the network with sigmoid activation
+    trained_net = copy.deepcopy(net)
+    trained_net, train_losses, val_losses = mini_batch_GD(
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        best_params,
+        trained_net,
+        loss_type="binary_cross_entropy",
+        activation="sigmoid",
+    )
+    # Show histogram of correctness
+    P_test = apply_network(X_test, net, activation="sigmoid")
+    plot_histogram_correctness(P_test, y_test, "sigmoid")
+    P_test = apply_network(X_test, net, activation="softmax")
+    plot_histogram_correctness(P_test, y_test, "softmax")
+    print("All experiments completed.")
+    print("Check reports folder for results.")
 
 
 if __name__ == "__main__":
-
     # Uncomment the function you want to run
     # first_setup()
     # second_setup()

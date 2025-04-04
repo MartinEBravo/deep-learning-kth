@@ -95,7 +95,7 @@
 % compute these gradients.
 
 \section{Introduction}
-In this assignment, we implemented a simple classifier for the CIFAR-10 dataset using softmax regression (multinomial logistic regression). We explored the effects of different hyperparameters, such as learning rate ($\eta$), number of epochs, batch size, and L2 regularization strength ($\lambda$). Additionally, we visualized the learned weights as images and evaluated training, validation, and test performance.
+In this report, we explore the implementation and evaluation of a single-layer softmax regression model for classifying images from the CIFAR-10 dataset. The primary objective is to understand the behavior of this simple model and analyze its performance under various hyperparameter configurations. We investigate the effects of learning rate and regularization strength on the model's training and generalization capabilities. Additionally, we experiment with techniques such as data augmentation and hyperparameter tuning to improve the model's accuracy. Finally, we compare the softmax regression approach with an alternative method using multiple binary cross-entropy losses to highlight the strengths and limitations of each approach. This study provides insights into the fundamental principles of neural network training and serves as a foundation for more advanced architectures.
 
 \section{Dataset and Preprocessing}
 The CIFAR-10 dataset consists of $32\times32$ color images belonging to 10 classes. We normalized the input data per feature using the training set mean and standard deviation. The dataset was split into training, validation, and test sets. Below are a few CIFAR-10 examples:
@@ -278,8 +278,6 @@ We train the network on the original dataset to compare the test accuracy with t
 
 As shown in Table~\ref{tab:experiment_results_bce}, the softmax regression model slightly outperforms the multiple binary cross-entropy model in terms of both validation and test accuracy. This is expected, as softmax is specifically designed for multi-class classification tasks, where each input belongs to exactly one class. The softmax activation introduces competition among classes by normalizing the output probabilities to sum to one, enforcing mutual exclusivity. In contrast, the sigmoid activation used in combination with the binary cross-entropy loss treats each class as an independent binary classification task. This can lead to ambiguous predictions where multiple classes are assigned high probabilities, which is suboptimal in a single-label setting like CIFAR-10. Therefore, while multiple BCE can be effective for multi-label problems, softmax remains the preferred choice for multi-class classification due to its inductive bias and superior performance.
 
-
-
 \begin{figure}[h!]
     \centering
     \begin{subfigure}{0.45\textwidth}
@@ -295,7 +293,33 @@ As shown in Table~\ref{tab:experiment_results_bce}, the softmax regression model
 \end{figure}
 
 
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\linewidth]{imgs/assignment1_histogram_correctness_sigmoid.png}
+        \caption{Histogram of the correctness of the predictions using BCE loss.}
+        \label{fig:exp_bce_hist}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\linewidth]{imgs/assignment1_histogram_correctness_softmax.png}
+        \caption{Histogram of the correctness of the predictions using Softmax.}
+        \label{fig:exp_softmax_hist}
+    \end{subfigure}
+    \caption{Histograms of the correctness of the predictions using BCE loss and Softmax.}
+    \label{fig:exp_hist}
+\end{figure}
+
+In Figure~\ref{fig:exp_hist}, we can see the histograms of the correctness of the predictions using BCE loss and softmax. The softmax classifier shows a higher confidence on the true class when it is correct, but also makes overconfident mistakes. The sigmoid model tends to be more conservative, assigning mid-range probabilities even when correct. This might be a sign of better regularization but could also lead to underconfident predictions.
+
+
+
 \section{Conclusion}
+
+In this report, we analyzed the performance of a single-layer softmax regression model for CIFAR-10 classification. Through experiments, we observed the impact of learning rate and regularization strength on training stability and generalization. Moderate regularization and a small learning rate were found to yield the best results. Additionally, data augmentation and hyperparameter tuning further improved performance.
+
+We also compared the softmax regression model with an alternative approach using multiple binary cross-entropy losses. While the softmax model performed slightly better for single-label classification, the BCE approach demonstrated potential for multi-label tasks.
+
+Overall, this study highlights the importance of hyperparameter selection and the trade-offs between different loss functions in neural network training. These insights provide a foundation for exploring more complex architectures in future work.
 
 
 \end{document}
