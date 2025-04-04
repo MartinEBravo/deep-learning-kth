@@ -30,4 +30,5 @@ datasets:
 	mv cifar-10-batches-py Datasets/
 
 run:
+	$(MAKE) format
 	python3 Assignment1/Assignment1.py

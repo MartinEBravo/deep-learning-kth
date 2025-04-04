@@ -1,5 +1,7 @@
 import copy
 import os
+import tqdm
+import shutil
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +16,17 @@ eps = 1e-9
 # Create reports directory
 if not os.path.exists("reports"):
     os.makedirs("reports")
+
+# Clear the reports directory
+for filename in os.listdir("reports"):
+    file_path = os.path.join("reports", filename)
+    try:
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+    except Exception as e:
+        print(f"Failed to delete {file_path}. Reason: {e}")
 
 
 def compute_grads_with_torch(X, y, network_params, lam):
@@ -71,6 +84,7 @@ def show_cifar_10_examples(
         axs[i].imshow(X_im[:, :, :, i])
         axs[i].axis("off")
     plt.savefig("reports/assignment1_cifar_examples.png")
+    plt.close()
 
 
 def to_one_hot(idx: int, length: int = 10):
@@ -185,36 +199,30 @@ def testing_grad(X_train, Y_train, y_train):
     mean_dist_W = np.mean(dist_W)
     mean_dist_b = np.mean(dist_b)
 
-    print(f"Gradient check - W error: {mean_dist_W:.2e}, b error: {mean_dist_b:.2e}")
-
     assert mean_dist_W < 1, f"W mismatch too large: {mean_dist_W}"
     assert mean_dist_b < 1, f"b mismatch too large: {mean_dist_b}"
 
 
-def mini_batch_GD(X_train, Y_train, y_train, gd_params, net, lam):
+def mini_batch_GD(
+    X_train, Y_train, y_train, X_val, Y_val, y_val, gd_params, net, verbose=False
+):
+    train_losses = []
+    val_losses = []
     n_batch = gd_params["n_batch"]
     eta = gd_params["eta"]
     n_epochs = gd_params["n_epochs"]
-
-    train_losses = []
+    lam = gd_params["lam"]
 
     n = X_train.shape[1]
-
-    for epoch in range(n_epochs):
-        loss = 0
-        acc = 0
+    for epoch in tqdm.tqdm(range(n_epochs), desc="Training Progress"):
         for j in range(n // n_batch):
             j_start = j * n_batch
             j_end = (j + 1) * n_batch
             inds = range(j_start, j_end)
             X_batch = X_train[:, inds]
             Y_batch = Y_train[:, inds]
-            y_batch = y_train[inds]
 
             P = apply_network(X_batch, net)
-            loss += compute_loss(P, Y_batch, net, lam)
-            acc = compute_accuracy(P, y_batch)
-
             # Backward
             grads = backward_pass(X_batch, Y_batch, P, net, lam)
 
@@ -222,12 +230,29 @@ def mini_batch_GD(X_train, Y_train, y_train, gd_params, net, lam):
             net["W"] -= eta * grads["W"]
             net["b"] -= eta * grads["b"]
 
-            train_losses.append(loss)
-        print(f"Epoch {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.2f}%")
-    return net
+        # Compute loss and accuracy for the entire training set
+        P = apply_network(X_train, net)
+        train_loss = compute_loss(P, Y_train, net, lam)
+        train_acc = compute_accuracy(P, y_train)
+        train_losses.append(train_loss)
+
+        # Validation
+        P_val = apply_network(X_val, net)
+        val_loss = compute_loss(P_val, Y_val, net, lam)
+        val_acc = compute_accuracy(P_val, y_val)
+        val_losses.append(val_loss)
+
+        # Print progress
+        if verbose:
+            print(
+                f"Epoch {epoch + 1}/{n_epochs}: Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.2f}%, "
+                f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.2f}%"
+            )
+
+    return net, train_losses, val_losses
 
 
-def show_learned_matrices(trained_net):
+def show_learned_matrices(trained_net, name="experiment"):
     Ws = trained_net["W"].transpose().reshape((32, 32, 3, 10), order="F")
     W_im = np.transpose(Ws, (1, 0, 2, 3))
     fig, axs = plt.subplots(1, 10, figsize=(20, 5))
@@ -236,24 +261,71 @@ def show_learned_matrices(trained_net):
         w_im_norm = (w_im - np.min(w_im)) / (np.max(w_im) - np.min(w_im))
         axs[i].imshow(w_im_norm)
         axs[i].axis("off")
-    plt.savefig("reports/assignment1_learned_matrices.png")
-    plt.show()
+    plt.savefig(f"reports/assignment1_learned_matrices_{name}.png")
+    plt.close()
+
+
+def show_loss_evolution(train_loss, val_loss, gd_params, name="experiment"):
+    plt.plot(train_loss, label="Training Loss", color="blue")
+    plt.plot(val_loss, label="Validation Loss", color="orange", linestyle="--")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title(
+        f"Loss Evolution (eta={gd_params['eta']}, n_epochs={gd_params['n_epochs']}, n_batch={gd_params['n_batch']}, lambda={gd_params['lam']})"
+    )
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"reports/assignment1_loss_evolution_{name}.png")
+    plt.close()
+
+
+def run_experiment(
+    X_train,
+    Y_train,
+    y_train,
+    X_val,
+    Y_val,
+    y_val,
+    X_test,
+    Y_test,
+    y_test,
+    gd_params,
+    net,
+    name="experiment",
+):
+    print(f"Running experiment {name} with parameters: {gd_params}")
+
+    trained_net = copy.deepcopy(net)
+    trained_net, train_losses, val_losses = mini_batch_GD(
+        X_train, Y_train, y_train, X_val, Y_val, y_val, gd_params, trained_net
+    )
+
+    # Test the network
+    P_test = apply_network(X_test, trained_net)
+    test_loss = compute_loss(P_test, Y_test, trained_net)
+    test_acc = compute_accuracy(P_test, y_test)
+
+    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")
+
+    show_learned_matrices(trained_net, name=name)
+    show_loss_evolution(train_losses, val_losses, gd_params, name=name)
+    return trained_net, train_losses, val_losses
 
 
 if __name__ == "__main__":
     # Visualizing dataset
     train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
-    validation_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
+    val_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
     test_dir = "./Datasets/cifar-10-batches-py/test_batch"
 
     show_cifar_10_examples()
 
     X_train, Y_train, y_train = load_batch(train_dir)
-    X_validation, Y_validation, y_validation = load_batch(validation_dir)
+    X_val, Y_val, y_val = load_batch(val_dir)
     X_test, Y_test, y_test = load_batch(test_dir)
 
     # Normalize X
-    X_train, X_validation, X_test = normalize_data(X_train, X_validation, X_test)
+    X_train, X_val, X_test = normalize_data(X_train, X_val, X_test)
 
     # Initialize network
     net = init_weights()
@@ -262,11 +334,29 @@ if __name__ == "__main__":
     p = apply_network(X_train[:, 0:100], net)
     testing_grad(X_train, Y_train, y_train)
 
-    # Training
-    gd_params = {"n_batch": 100, "eta": 0.001, "n_epochs": 40}
-    lam = 0
-    trained_net = copy.deepcopy(net)
-    trained_net = mini_batch_GD(X_train, Y_train, y_train, gd_params, trained_net, lam)
+    experiments = [
+        {"eta": 0.001, "n_epochs": 40, "n_batch": 100, "lam": 0},
+        {"eta": 0.01, "n_epochs": 40, "n_batch": 100, "lam": 0},
+        {"eta": 0.001, "n_epochs": 40, "n_batch": 10, "lam": 0},
+        {"eta": 0.001, "n_epochs": 40, "n_batch": 100, "lam": 1},
+    ]
 
-    # Show learned matrices
-    show_learned_matrices(trained_net)
+    # Run experiments
+    for i, gd_params in enumerate(experiments):
+        experiment_name = f"experiment_{i + 1}"
+        trained_net, train_losses, val_losses = run_experiment(
+            X_train,
+            Y_train,
+            y_train,
+            X_val,
+            Y_val,
+            y_val,
+            X_test,
+            Y_test,
+            y_test,
+            gd_params,
+            net,
+            name=experiment_name,
+        )
+    print("All experiments completed.")
+    print("Check reports folder for results.")
