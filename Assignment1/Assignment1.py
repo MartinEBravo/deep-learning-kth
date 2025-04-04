@@ -16,6 +16,10 @@ eps = 1e-9
 if not os.path.exists("reports"):
     os.makedirs("reports")
 
+# Create imgs directory
+if not os.path.exists("reports/imgs"):
+    os.makedirs("reports/imgs")
+
 # Delete all the .png files in the reports directory
 # for filename in os.listdir("reports"):
 #     if filename.endswith(".png"):
