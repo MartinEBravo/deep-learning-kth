@@ -1,6 +1,5 @@
 import copy
 import os
-import time
 import tqdm
 
 import numpy as np
@@ -136,23 +135,40 @@ def init_weights(K: int = 10, d: int = 3072):
     return init_net
 
 
-def softmax(z, K: int = 10):
+def softmax(z):
     exp_z = np.exp(z)
-    return exp_z / np.sum(exp_z, axis=0)
+    return exp_z / (np.sum(exp_z, axis=0) + eps)
 
 
-def apply_network(X, net):
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+
+def apply_network(X, net, activation="softmax"):
     W = net["W"]
     b = net["b"]
-    return softmax(W @ X + b)
+    if activation == "sigmoid":
+        return sigmoid(W @ X + b)
+    elif activation == "softmax":
+        return softmax(W @ X + b)
+    else:
+        raise ValueError("Invalid activation function. Choose 'sigmoid' or 'softmax'.")
 
 
-def compute_loss(P, Y, net, lam=0.5):
-    D_len = Y.shape[1]
+def compute_loss(P, Y, net, lam=0.5, loss_type="cross_entropy"):
     W = net["W"]
-    loss = -np.sum(Y * np.log(P + eps)) / D_len
-    reg = lam * np.sum(W * W)
-    return loss + reg
+    if loss_type == "cross_entropy":
+        return cross_entropy(Y, P) + lam * np.sum(W * W)
+    elif loss_type == "binary_cross_entropy":
+        return binary_cross_entropy(Y, P) + lam * np.sum(W * W)
+
+
+def binary_cross_entropy(y, y_hat):
+    return -np.mean(y * np.log(y_hat + eps) + (1 - y) * np.log(1 - y_hat + eps))
+
+
+def cross_entropy(y, y_hat):
+    return -np.mean(np.sum(y * np.log(y_hat + eps), axis=0))
 
 
 def compute_accuracy(P, y):
@@ -199,7 +215,17 @@ def testing_grad(X_train, Y_train, y_train):
 
 
 def mini_batch_GD(
-    X_train, Y_train, y_train, X_val, Y_val, y_val, gd_params, net, verbose=False
+    X_train,
+    Y_train,
+    y_train,
+    X_val,
+    Y_val,
+    y_val,
+    gd_params,
+    net,
+    loss_type="cross_entropy",
+    activation="softmax",
+    verbose=False,
 ):
     train_losses = []
     val_losses = []
@@ -217,7 +243,7 @@ def mini_batch_GD(
             X_batch = X_train[:, inds]
             Y_batch = Y_train[:, inds]
 
-            P = apply_network(X_batch, net)
+            P = apply_network(X_batch, net, activation=activation)
             # Backward
             grads = backward_pass(X_batch, Y_batch, P, net, lam)
 
@@ -226,14 +252,14 @@ def mini_batch_GD(
             net["b"] -= eta * grads["b"]
 
         # Compute loss and accuracy for the entire training set
-        P = apply_network(X_train, net)
-        train_loss = compute_loss(P, Y_train, net, lam)
+        P = apply_network(X_train, net, activation=activation)
+        train_loss = compute_loss(P, Y_train, net, lam, loss_type)
         train_acc = compute_accuracy(P, y_train)
         train_losses.append(train_loss)
 
         # Validation
-        P_val = apply_network(X_val, net)
-        val_loss = compute_loss(P_val, Y_val, net, lam)
+        P_val = apply_network(X_val, net, activation=activation)
+        val_loss = compute_loss(P_val, Y_val, net, lam, loss_type)
         val_acc = compute_accuracy(P_val, y_val)
         val_losses.append(val_loss)
 
@@ -245,11 +271,11 @@ def mini_batch_GD(
             )
 
     # Final training and validation loss
-    P = apply_network(X_train, net)
-    train_loss = compute_loss(P, Y_train, net, lam)
+    P = apply_network(X_train, net, activation=activation)
+    train_loss = compute_loss(P, Y_train, net, lam, loss_type)
     train_acc = compute_accuracy(P, y_train)
-    P_val = apply_network(X_val, net)
-    val_loss = compute_loss(P_val, Y_val, net, lam)
+    P_val = apply_network(X_val, net, activation=activation)
+    val_loss = compute_loss(P_val, Y_val, net, lam, loss_type)
     val_acc = compute_accuracy(P_val, y_val)
     # Print final results
     print(
@@ -317,17 +343,30 @@ def run_experiment(
     net,
     name="experiment",
     files=True,
+    loss_type="cross_entropy",
+    activation="softmax",
 ):
     print(f"Running experiment {name} with parameters: {gd_params}")
 
     trained_net = copy.deepcopy(net)
     trained_net, train_losses, val_losses = mini_batch_GD(
-        X_train, Y_train, y_train, X_val, Y_val, y_val, gd_params, trained_net
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        gd_params,
+        trained_net,
+        loss_type,
+        activation,
     )
 
     # Test the network
-    P_test = apply_network(X_test, trained_net)
-    test_loss = compute_loss(P_test, Y_test, trained_net)
+    P_test = apply_network(X_test, trained_net, activation=activation)
+    test_loss = compute_loss(
+        P_test, Y_test, trained_net, gd_params["lam"], loss_type=loss_type
+    )
     test_acc = compute_accuracy(P_test, y_test)
 
     print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")
@@ -448,9 +487,9 @@ def second_setup():
     y_train_aug = np.concatenate((y_train, y_train_flip), axis=0)
 
     ########### 3. Grid Search ###########
-    n_subsamples = 1000
+    n_subsamples = 5000
     # Define the grid search parameters
-    eta_values = [0.001, 0.01, 0.1, 1]
+    eta_values = [0.01, 0.1, 1]
     n_epochs_values = [40]
     n_batch_values = [50, 100, 200, 400]
     lam_values = [0, 0.1, 1]
@@ -484,7 +523,7 @@ def second_setup():
 
                     # Test the network
                     P_test = apply_network(X_test, trained_net)
-                    test_loss = compute_loss(P_test, Y_test, trained_net)
+                    test_loss = compute_loss(P_test, Y_test, trained_net, lam)
                     test_acc = compute_accuracy(P_test, y_test)
 
                     print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")
@@ -515,6 +554,68 @@ def second_setup():
 
 
 def third_setup():
+    train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
+    val_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
+    test_dir = "./Datasets/cifar-10-batches-py/test_batch"
+    # Load the dataset
+    X_train, Y_train, y_train = load_batch(train_dir)
+    X_val, Y_val, y_val = load_batch(val_dir)
+    X_test, Y_test, y_test = load_batch(test_dir)
+    # Normalize X
+    X_train, X_val, X_test = normalize_data(X_train, X_val, X_test)
+    # Initialize network
+    net = init_weights()
+    # Testing the network
+    # p = apply_network(X_train[:, 0:100], net)
+    # testing_grad(X_train, Y_train, y_train)
+    # Run experiments
+    best_params = {
+        "eta": 0.01,
+        "n_epochs": 40,
+        "n_batch": 400,
+        "lam": 0.1,
+    }
+    experiment_name = "experiment_3_third_setup_softmax"
+    run_experiment(
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        X_test,
+        Y_test,
+        y_test,
+        best_params,
+        net,
+        name=experiment_name,
+        loss_type="cross_entropy",
+        activation="softmax",
+    )
+    experiment_name = "experiment_3_third_setup_sigmoid"
+    best_params = {
+        "eta": 0.01,
+        "n_epochs": 40,
+        "n_batch": 400,
+        "lam": 0.01,
+    }
+    run_experiment(
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        X_test,
+        Y_test,
+        y_test,
+        best_params,
+        net,
+        name=experiment_name,
+        files=True,
+        loss_type="binary_cross_entropy",
+        activation="sigmoid",
+    )
 
 
 if __name__ == "__main__":
@@ -522,7 +623,7 @@ if __name__ == "__main__":
     # first_setup()
 
     # Run the second setup
-    second_setup()
+    # second_setup()
 
     # Run the third setup
     third_setup()

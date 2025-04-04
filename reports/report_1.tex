@@ -7,18 +7,18 @@
 \geometry{margin=1in}
 
 \title{Assignment 1 - CIFAR-10 Classification}
-\author{Martín Bravo}
+\author{Martín Bravo, DD2424 Deep Learning, KTH Royal Institute of Technology}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
-In this assignment you will train and test a one layer network with multi-
-ple outputs to classify images from the CIFAR-10 dataset. You will train
-the network using mini-batch gradient descent applied to a cost function
-that computes the cross-entropy loss of the classifier applied to the labelled
-training data and an L2 regularization term on the weight matrix.
+% In this assignment you will train and test a one layer network with multi-
+% ple outputs to classify images from the CIFAR-10 dataset. You will train
+% the network using mini-batch gradient descent applied to a cost function
+% that computes the cross-entropy loss of the classifier applied to the labelled
+% training data and an L2 regularization term on the weight matrix.
 
 % Background 1: Mathematical background
 % The mathematical details of the network are as follows. Given an input
@@ -132,7 +132,7 @@ This simple architecture allows us to directly map input features to class proba
 
 The softmax regression model is particularly well-suited for multi-class classification problems, as it generalizes logistic regression to handle multiple classes. However, its performance is limited when the data is not linearly separable, which is why more advanced architectures, such as multi-layer neural networks, are often used in practice. In this assignment, we focus on understanding the behavior of this simple model and its sensitivity to hyperparameters like the learning rate ($\eta$) and regularization strength ($\lambda$).
 
-\section{Experiments}
+\section{Results}
 We conducted four main experiments with varying values of $\eta$ and $\lambda$ while keeping $n_{epochs}=40$ and $batch=100$.
 
 \subsection{Effect of the Learning Rate and the Regularization Strength}
@@ -207,7 +207,7 @@ Figure~\ref{fig:loss_experiments} shows the evolution of training and validation
     \label{fig:loss_experiments_matrices}
 \end{figure}
 
-The results indicate that a high learning rate leads to unstable training, with validation accuracy dropping sharply, suggesting poor generalization and divergence. Conversely, a small learning rate ensures stable convergence, resulting in the highest test accuracy with smooth loss curves and effective generalization. Introducing moderate regularization, such as $\lambda=0.1$, slightly improves validation accuracy while keeping training accuracy nearly unchanged. However, heavy regularization, like $\lambda=1$, harms both training and generalization, indicating underfitting. These findings confirm that moderate regularization can enhance generalization, while excessive regularization reduces model capacity. Similarly, an appropriately small learning rate ensures convergence, whereas a large one destabilizes training.
+The results indicate that a high learning rate leads to unstable training, with validation accuracy dropping sharply, suggesting poor generalization and divergence. Conversely, a small learning rate ensures stable convergence, resulting in the highest test accuracy with smooth loss curves and effective generalization. Introducing moderate regularization, such as $\lambda=0.1$, slightly improves validation accuracy while keeping training accuracy nearly unchanged. However, heavy regularization, like $\lambda=1$, harms generalization. These findings confirm that moderate regularization can enhance generalization, while excessive regularization reduces model capacity. Similarly, an appropriately small learning rate ensures convergence, whereas a large one destabilizes training.
 
 
 \subsection{Improving performance}
@@ -218,8 +218,6 @@ We improved the performance of the network by implementing the following techniq
     \item Data augmentation: We applied random transformations to the training images, such as horizontal flipping to increase the diversity of the training set and reduce overfitting.
     \item GridSearch: We performed a grid search over the hyperparameters, including learning rate ($\eta$), batch size, and L2 regularization strength ($\lambda$). This helped us find the optimal combination of hyperparameters for our model:
     \begin{verbatim}
-    ########### 3. Grid Search ###########
-    n_subsamples = 1000
     # Define the grid search parameters
     eta_values = [0.001, 0.01, 0.1, 1]
     n_epochs_values = [40]
@@ -228,10 +226,74 @@ We improved the performance of the network by implementing the following techniq
     \end{verbatim}
 \end{itemize}
 
+We get that the best configuration is $\eta=0.01$, $n_{epochs}=40$, $n_{batch}=400$, and $\lambda=0.1$. The final accuracy on the test set was 43.20\%, achieving an extra 4\% accuracy compared to the previous configuration. The training and validation loss curves for this configuration are shown in Figure~\ref{fig:exp_best}.
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\linewidth]{imgs/assignment1_loss_evolution_experiment_2_second_setup.png}
+        \caption{$\eta=0.01$, $\lambda=0.1$}
+        \label{fig:exp_best}
+    \end{subfigure}
+\end{figure}
 
-\subsection{Train network with multiple binary cross-entropy losses}
 
-These will be implemented next to complete the assignment fully.
+
+\subsection{Training with Multiple Binary Cross-Entropy Losses}
+
+We also trained the network using \textit{multiple binary cross-entropy} (BCE) loss, replacing the softmax activation and cross-entropy loss with sigmoid activations and a BCE loss applied independently to each class. This approach allows the model to treat each class independently, which can be beneficial in certain scenarios such as multi-label classification.
+
+The multiple binary cross-entropy loss is defined as:
+\[
+\ell_{\text{bce}}(\mathbf{x}, \mathbf{y}) = -\frac{1}{K} \sum_{k=1}^{K} \left[(1 - y_k) \log(1 - p_k) + y_k \log(p_k)\right]
+\]
+where \( y_k \in \{0, 1\} \) is the ground-truth label for class \(k\), and \( p_k \) is the predicted probability for class \(k\), given by the sigmoid function:
+\[
+p_k = \sigma(s_k) = \frac{1}{1 + \exp(-s_k)}
+\]
+where \( s_k \) is the logit (score before activation) for class \(k\). The model outputs one probability per class, and classification is typically done by thresholding \( p_k \), e.g., using 0.5.
+
+\paragraph{Gradient.} The gradient of the loss with respect to the score vector \( \mathbf{s} \) is:
+\[
+\frac{\partial \ell_{\text{bce}}}{\partial \mathbf{s}} = \frac{1}{K} \left( \boldsymbol{p} - \mathbf{y} \right)
+\]
+where \( \boldsymbol{p} = \sigma(\mathbf{s}) \) is the vector of predicted probabilities. This result implies that we can reuse most of the existing backpropagation code by simply replacing the softmax with the sigmoid activation and using this new gradient expression.
+
+
+We train the network on the original dataset to compare the test accuracy with the softmax regression model. The results are shown in Table~\ref{tab:experiment_results_bce}.
+
+\begin{table}[h!]
+    \centering
+    \caption{Final accuracy (\%) for the multiple binary cross-entropy loss and sigmoid experiment vs softmax regression.}
+    \label{tab:experiment_results_bce}
+
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        \textbf{Experiment} & \boldmath$\eta$ & \boldmath$\lambda$ & \textbf{Train Acc.} & \textbf{Val/Test Acc.} \\
+        \hline
+        Softmax Regression   & 0.01 & 0.1 & 45.46\% & 38.42\% / 38.88\% \\
+        Multiple BCE + Sigmoid & 0.01 & 0.01 & 45.64\% & 38.17\% / 38.10\% \\
+        \hline
+    \end{tabular}
+\end{table}
+
+As shown in Table~\ref{tab:experiment_results_bce}, the softmax regression model slightly outperforms the multiple binary cross-entropy model in terms of both validation and test accuracy. This is expected, as softmax is specifically designed for multi-class classification tasks, where each input belongs to exactly one class. The softmax activation introduces competition among classes by normalizing the output probabilities to sum to one, enforcing mutual exclusivity. In contrast, the sigmoid activation used in combination with the binary cross-entropy loss treats each class as an independent binary classification task. This can lead to ambiguous predictions where multiple classes are assigned high probabilities, which is suboptimal in a single-label setting like CIFAR-10. Therefore, while multiple BCE can be effective for multi-label problems, softmax remains the preferred choice for multi-class classification due to its inductive bias and superior performance.
+
+
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\linewidth]{imgs/assignment1_loss_evolution_experiment_3_third_setup_sigmoid.png}
+        \caption{$\eta=0.01$, $\lambda=0.1$ with BCE loss}
+        \label{fig:exp_bce}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\linewidth]{imgs/assignment1_loss_evolution_experiment_3_third_setup_softmax.png}
+        \caption{$\eta=0.01$, $\lambda=0.1$ with Softmax}
+        \label{fig:exp_softmax}
+    \end{subfigure}
+\end{figure}
+
 
 \section{Conclusion}
 
