@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
@@ -182,7 +184,54 @@ def testing_grad(X_train, Y_train, y_train):
     assert mean_dist_b < 0.01, f"b mismatch too large: {mean_dist_b}"
 
 
+def mini_batch_GD(X_train, Y_train, y_train, gd_params, net, lam):
+    n_batch = gd_params["n_batch"]
+    eta = gd_params["eta"]
+    n_epochs = gd_params["n_epochs"]
+
+    train_losses = []
+
+    n = X_train.shape[1]
+
+    for epoch in range(n_epochs):
+        loss = 0
+        acc = 0
+        for j in range(n // n_batch):
+            j_start = j * n_batch
+            j_end = (j + 1) * n_batch
+            inds = range(j_start, j_end)
+            X_batch = X_train[:, inds]
+            Y_batch = Y_train[:, inds]
+            y_batch = y_train[inds]
+
+            P = apply_network(X_batch, net)
+            loss += compute_loss(P, Y_batch, net, lam)
+            acc = compute_accuracy(P, y_batch)
+
+            # Backward
+            grads = backward_pass(X_batch, Y_batch, P, net, lam)
+
+            # Update
+            net["W"] -= eta * grads["W"]
+            net["b"] -= eta * grads["b"]
+
+            train_losses.append(loss)
+        print(f"Epoch {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.2f}%")
+    return net
+
+def show_learned_matrix(trained_net):
+    Ws = trained_net["W"].transpose().reshape((32, 32, 3, 10), order="F")
+    W_im = np.transpose(Ws, (1, 0, 2, 3))
+    fig, axs = plt.subplots(1, 10, figsize=(20, 5))
+    for i in range(10):
+        w_im = W_im[:, :, :, i]
+        w_im_norm = (w_im - np.min(w_im)) / (np.max(w_im) - np.min(w_im))
+        axs[i].imshow(w_im_norm)
+        axs[i].axis("off")
+    plt.show()
+
 if __name__ == "__main__":
+
     # Visualizing dataset
     train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
     validation_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
@@ -199,28 +248,15 @@ if __name__ == "__main__":
     # Initialize network
     net = init_weights()
 
-    # Testing
-    p = apply_network(X_train[:, 0:100], net)
-    testing_grad(X_train, Y_train, y_train)
+    ########## HERE WE TEST THE NETWORK #############
+    # p = apply_network(X_train[:, 0:100], net)
+    # testing_grad(X_train, Y_train, y_train)
 
-    num_epochs = 40
-    lr = 0.001
+    # Training
+    gd_params = {"n_batch": 100, "eta": 0.001, "n_epochs": 40}
     lam = 0
-    batch_size = 100
-    train_losses = []
+    trained_net = copy.deepcopy(net)
+    trained_net = mini_batch_GD(X_train, Y_train, y_train, gd_params, trained_net, lam)
 
-    for epoch in range(num_epochs):
-        # Forward
-        P = apply_network(X_train, net)
-        loss = compute_loss(P, Y_train, net, lam)
-        acc = compute_accuracy(P, y_train)
-
-        # Backward
-        grads = backward_pass(X_train, Y_train, P, net, lam)
-
-        # Update
-        net["W"] -= lr * grads["W"]
-        net["b"] -= lr * grads["b"]
-
-        train_losses.append(loss)
-        print(f"Epoch {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.2f}%")
+    # Show learned matrices
+    show_learned_matrix(trained_net)
