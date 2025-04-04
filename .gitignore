@@ -5,5 +5,4 @@ Datasets
 .ruff_cache
 **/build/
 **/__pycache__/
-
 **.png

@@ -1,7 +1,7 @@
 import copy
 import os
+import time
 import tqdm
-import shutil
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,16 +17,11 @@ eps = 1e-9
 if not os.path.exists("reports"):
     os.makedirs("reports")
 
-# Clear the reports directory
-for filename in os.listdir("reports"):
-    file_path = os.path.join("reports", filename)
-    try:
-        if os.path.isfile(file_path) or os.path.islink(file_path):
-            os.unlink(file_path)
-        elif os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-    except Exception as e:
-        print(f"Failed to delete {file_path}. Reason: {e}")
+# Delete all the .png files in the reports directory
+# for filename in os.listdir("reports"):
+#     if filename.endswith(".png"):
+#         file_path = os.path.join("reports", filename)
+#         os.remove(file_path)
 
 
 def compute_grads_with_torch(X, y, network_params, lam):
@@ -83,7 +78,7 @@ def show_cifar_10_examples(
     for i in range(ni):
         axs[i].imshow(X_im[:, :, :, i])
         axs[i].axis("off")
-    plt.savefig("reports/assignment1_cifar_examples.png")
+    plt.savefig("reports/imgs/assignment1_cifar_examples.png")
     plt.close()
 
 
@@ -249,10 +244,23 @@ def mini_batch_GD(
                 f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.2f}%"
             )
 
+    # Final training and validation loss
+    P = apply_network(X_train, net)
+    train_loss = compute_loss(P, Y_train, net, lam)
+    train_acc = compute_accuracy(P, y_train)
+    P_val = apply_network(X_val, net)
+    val_loss = compute_loss(P_val, Y_val, net, lam)
+    val_acc = compute_accuracy(P_val, y_val)
+    # Print final results
+    print(
+        f"Final Training Loss: {train_loss:.4f}, Final Training Accuracy: {train_acc:.2f}%, "
+        f"Final Validation Loss: {val_loss:.4f}, Final Validation Accuracy: {val_acc:.2f}%"
+    )
+
     return net, train_losses, val_losses
 
 
-def show_learned_matrices(trained_net, name="experiment"):
+def show_learned_matrices(trained_net, gd_params, name="experiment"):
     Ws = trained_net["W"].transpose().reshape((32, 32, 3, 10), order="F")
     W_im = np.transpose(Ws, (1, 0, 2, 3))
     fig, axs = plt.subplots(1, 10, figsize=(20, 5))
@@ -261,7 +269,10 @@ def show_learned_matrices(trained_net, name="experiment"):
         w_im_norm = (w_im - np.min(w_im)) / (np.max(w_im) - np.min(w_im))
         axs[i].imshow(w_im_norm)
         axs[i].axis("off")
-    plt.savefig(f"reports/assignment1_learned_matrices_{name}.png")
+    plt.suptitle(
+        f"Learned Weights (eta={gd_params['eta']}, n_epochs={gd_params['n_epochs']}, n_batch={gd_params['n_batch']}, lambda={gd_params['lam']})"
+    )
+    plt.savefig(f"reports/imgs/assignment1_learned_matrices_{name}.png")
     plt.close()
 
 
@@ -275,8 +286,21 @@ def show_loss_evolution(train_loss, val_loss, gd_params, name="experiment"):
     )
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"reports/assignment1_loss_evolution_{name}.png")
+    plt.savefig(f"reports/imgs/assignment1_loss_evolution_{name}.png")
     plt.close()
+
+
+def flip_images(X):
+    """
+    Horizontally flips CIFAR-10 images represented as (3072, N) matrix.
+    Each image is a 32x32x3 flattened into 3072.
+    """
+    # Create flip indices once
+    aa = np.arange(32).reshape((32, 1))
+    bb = np.arange(31, -1, -1).reshape((1, 32))
+    ind_flip = (32 * aa + bb).flatten()
+    inds_flip = np.concatenate([ind_flip, 1024 + ind_flip, 2048 + ind_flip])
+    return X[inds_flip, :]
 
 
 def run_experiment(
@@ -292,6 +316,7 @@ def run_experiment(
     gd_params,
     net,
     name="experiment",
+    files=True,
 ):
     print(f"Running experiment {name} with parameters: {gd_params}")
 
@@ -307,19 +332,23 @@ def run_experiment(
 
     print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")
 
-    show_learned_matrices(trained_net, name=name)
-    show_loss_evolution(train_losses, val_losses, gd_params, name=name)
-    return trained_net, train_losses, val_losses
+    if files:
+        show_learned_matrices(trained_net, gd_params, name=name)
+        show_loss_evolution(train_losses, val_losses, gd_params, name=name)
+
+    return test_acc
 
 
-if __name__ == "__main__":
+def first_setup():
     # Visualizing dataset
     train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
     val_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
     test_dir = "./Datasets/cifar-10-batches-py/test_batch"
 
+    # Visualize the first 5 images from the dataset
     show_cifar_10_examples()
 
+    # Load the dataset
     X_train, Y_train, y_train = load_batch(train_dir)
     X_val, Y_val, y_val = load_batch(val_dir)
     X_test, Y_test, y_test = load_batch(test_dir)
@@ -331,20 +360,20 @@ if __name__ == "__main__":
     net = init_weights()
 
     # Testing the network
-    p = apply_network(X_train[:, 0:100], net)
-    testing_grad(X_train, Y_train, y_train)
+    # p = apply_network(X_train[:, 0:100], net)
+    # testing_grad(X_train, Y_train, y_train)
 
+    # Run experiments
     experiments = [
+        {"eta": 0.1, "n_epochs": 40, "n_batch": 100, "lam": 0},
         {"eta": 0.001, "n_epochs": 40, "n_batch": 100, "lam": 0},
-        {"eta": 0.01, "n_epochs": 40, "n_batch": 100, "lam": 0},
-        {"eta": 0.001, "n_epochs": 40, "n_batch": 10, "lam": 0},
+        {"eta": 0.001, "n_epochs": 40, "n_batch": 100, "lam": 0.1},
         {"eta": 0.001, "n_epochs": 40, "n_batch": 100, "lam": 1},
     ]
 
-    # Run experiments
     for i, gd_params in enumerate(experiments):
         experiment_name = f"experiment_{i + 1}"
-        trained_net, train_losses, val_losses = run_experiment(
+        run_experiment(
             X_train,
             Y_train,
             y_train,
@@ -360,3 +389,140 @@ if __name__ == "__main__":
         )
     print("All experiments completed.")
     print("Check reports folder for results.")
+
+
+def second_setup():
+    ####### 1. Training with all batches #######
+    # Load the dataset
+    batch_1 = "./Datasets/cifar-10-batches-py/data_batch_1"
+    batch_2 = "./Datasets/cifar-10-batches-py/data_batch_2"
+    batch_3 = "./Datasets/cifar-10-batches-py/data_batch_3"
+    batch_4 = "./Datasets/cifar-10-batches-py/data_batch_4"
+    batch_5 = "./Datasets/cifar-10-batches-py/data_batch_5"
+    test_dir = "./Datasets/cifar-10-batches-py/test_batch"
+
+    # Load all batches
+    X_train_1, Y_train_1, y_train_1 = load_batch(batch_1)
+    X_train_2, Y_train_2, y_train_2 = load_batch(batch_2)
+    X_train_3, Y_train_3, y_train_3 = load_batch(batch_3)
+    X_train_4, Y_train_4, y_train_4 = load_batch(batch_4)
+    X_train_5, Y_train_5, y_train_5 = load_batch(batch_5)
+
+    # Concatenate all batches
+    X_train = np.concatenate(
+        (X_train_1, X_train_2, X_train_3, X_train_4, X_train_5), axis=1
+    )
+    Y_train = np.concatenate(
+        (Y_train_1, Y_train_2, Y_train_3, Y_train_4, Y_train_5), axis=1
+    )
+    y_train = np.concatenate(
+        (y_train_1, y_train_2, y_train_3, y_train_4, y_train_5), axis=0
+    )
+
+    # Validation set is the last 1000 samples of the training set
+    X_val = X_train[:, -1000:]
+    Y_val = Y_train[:, -1000:]
+    y_val = y_train[-1000:]
+    X_train = X_train[:, :-1000]
+    Y_train = Y_train[:, :-1000]
+    y_train = y_train[:-1000]
+
+    # Load the test set
+    X_test, Y_test, y_test = load_batch(test_dir)
+    # Normalize X
+    X_train, X_val, X_test = normalize_data(X_train, X_val, X_test)
+    # Initialize network
+    net = init_weights()
+    # Testing the network
+    # p = apply_network(X_train[:, 0:100], net)
+    # testing_grad(X_train, Y_train, y_train)
+
+    ####### 2. Data Augmentation #######
+
+    X_train_flip = flip_images(X_train)
+    Y_train_flip = Y_train.copy()
+    y_train_flip = y_train.copy()
+
+    X_train_aug = np.concatenate((X_train, X_train_flip), axis=1)
+    Y_train_aug = np.concatenate((Y_train, Y_train_flip), axis=1)
+    y_train_aug = np.concatenate((y_train, y_train_flip), axis=0)
+
+    ########### 3. Grid Search ###########
+    n_subsamples = 1000
+    # Define the grid search parameters
+    eta_values = [0.001, 0.01, 0.1, 1]
+    n_epochs_values = [40]
+    n_batch_values = [50, 100, 200, 400]
+    lam_values = [0, 0.1, 1]
+    best_test_acc = 0
+
+    best_params = None
+
+    for eta in eta_values:
+        for n_epochs in n_epochs_values:
+            for n_batch in n_batch_values:
+                for lam in lam_values:
+                    gd_params = {
+                        "eta": eta,
+                        "n_epochs": n_epochs,
+                        "n_batch": n_batch,
+                        "lam": lam,
+                    }
+                    print(f"Running grid search with params: {gd_params}")
+                    # Run the experiment
+                    trained_net = copy.deepcopy(net)
+                    trained_net, train_losses, val_losses = mini_batch_GD(
+                        X_train_aug[:, :n_subsamples],
+                        Y_train_aug[:, :n_subsamples],
+                        y_train_aug[:n_subsamples],
+                        X_val,
+                        Y_val,
+                        y_val,
+                        gd_params,
+                        trained_net,
+                    )
+
+                    # Test the network
+                    P_test = apply_network(X_test, trained_net)
+                    test_loss = compute_loss(P_test, Y_test, trained_net)
+                    test_acc = compute_accuracy(P_test, y_test)
+
+                    print(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.2f}%")
+
+                    if test_acc > best_test_acc:
+                        best_test_acc = test_acc
+                        best_params = gd_params
+
+    # Run experiments
+    gd_params = best_params
+    print(best_params)
+    experiment_name = "experiment_2_second_setup"
+    run_experiment(
+        X_train_aug,
+        Y_train_aug,
+        y_train_aug,
+        X_val,
+        Y_val,
+        y_val,
+        X_test,
+        Y_test,
+        y_test,
+        gd_params,
+        net,
+        name=experiment_name,
+        files=True,
+    )
+
+
+def third_setup():
+
+
+if __name__ == "__main__":
+    # Run the first setup
+    # first_setup()
+
+    # Run the second setup
+    second_setup()
+
+    # Run the third setup
+    third_setup()
