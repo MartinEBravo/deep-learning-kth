@@ -623,11 +623,8 @@ def third_setup():
 
 
 if __name__ == "__main__":
-    # Run the first setup
+
+    # Uncomment the function you want to run
     # first_setup()
-
-    # Run the second setup
     # second_setup()
-
-    # Run the third setup
     third_setup()
