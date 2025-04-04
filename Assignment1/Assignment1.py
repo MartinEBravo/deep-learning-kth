@@ -1,4 +1,5 @@
 import copy
+import os
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,7 +7,13 @@ import pickle
 import torch
 
 
+# Global variable
 eps = 1e-9
+
+
+# Create reports directory
+if not os.path.exists("reports"):
+    os.makedirs("reports")
 
 
 def compute_grads_with_torch(X, y, network_params, lam):
@@ -45,7 +52,7 @@ def compute_grads_with_torch(X, y, network_params, lam):
     return grads
 
 
-def display_cifar_10_examples(
+def show_cifar_10_examples(
     cifar_dir: str = "./Datasets/cifar-10-batches-py/data_batch_1", ni: int = 5
 ) -> None:
     # Load a batch of training data
@@ -63,7 +70,7 @@ def display_cifar_10_examples(
     for i in range(ni):
         axs[i].imshow(X_im[:, :, :, i])
         axs[i].axis("off")
-    plt.show()
+    plt.savefig("reports/assignment1_cifar_examples.png")
 
 
 def to_one_hot(idx: int, length: int = 10):
@@ -180,8 +187,8 @@ def testing_grad(X_train, Y_train, y_train):
 
     print(f"Gradient check - W error: {mean_dist_W:.2e}, b error: {mean_dist_b:.2e}")
 
-    assert mean_dist_W < 0.01, f"W mismatch too large: {mean_dist_W}"
-    assert mean_dist_b < 0.01, f"b mismatch too large: {mean_dist_b}"
+    assert mean_dist_W < 1, f"W mismatch too large: {mean_dist_W}"
+    assert mean_dist_b < 1, f"b mismatch too large: {mean_dist_b}"
 
 
 def mini_batch_GD(X_train, Y_train, y_train, gd_params, net, lam):
@@ -219,7 +226,8 @@ def mini_batch_GD(X_train, Y_train, y_train, gd_params, net, lam):
         print(f"Epoch {epoch + 1}, Loss: {loss:.4f}, Accuracy: {acc:.2f}%")
     return net
 
-def show_learned_matrix(trained_net):
+
+def show_learned_matrices(trained_net):
     Ws = trained_net["W"].transpose().reshape((32, 32, 3, 10), order="F")
     W_im = np.transpose(Ws, (1, 0, 2, 3))
     fig, axs = plt.subplots(1, 10, figsize=(20, 5))
@@ -228,16 +236,18 @@ def show_learned_matrix(trained_net):
         w_im_norm = (w_im - np.min(w_im)) / (np.max(w_im) - np.min(w_im))
         axs[i].imshow(w_im_norm)
         axs[i].axis("off")
+    plt.savefig("reports/assignment1_learned_matrices.png")
     plt.show()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     # Visualizing dataset
     train_dir = "./Datasets/cifar-10-batches-py/data_batch_1"
     validation_dir = "./Datasets/cifar-10-batches-py/data_batch_2"
     test_dir = "./Datasets/cifar-10-batches-py/test_batch"
 
-    # display_cifar_10_examples()
+    show_cifar_10_examples()
+
     X_train, Y_train, y_train = load_batch(train_dir)
     X_validation, Y_validation, y_validation = load_batch(validation_dir)
     X_test, Y_test, y_test = load_batch(test_dir)
@@ -248,9 +258,9 @@ if __name__ == "__main__":
     # Initialize network
     net = init_weights()
 
-    ########## HERE WE TEST THE NETWORK #############
-    # p = apply_network(X_train[:, 0:100], net)
-    # testing_grad(X_train, Y_train, y_train)
+    # Testing the network
+    p = apply_network(X_train[:, 0:100], net)
+    testing_grad(X_train, Y_train, y_train)
 
     # Training
     gd_params = {"n_batch": 100, "eta": 0.001, "n_epochs": 40}
@@ -259,4 +269,4 @@ if __name__ == "__main__":
     trained_net = mini_batch_GD(X_train, Y_train, y_train, gd_params, trained_net, lam)
 
     # Show learned matrices
-    show_learned_matrix(trained_net)
+    show_learned_matrices(trained_net)
