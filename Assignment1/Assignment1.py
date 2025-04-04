@@ -509,9 +509,9 @@ def second_setup():
     y_train_aug = np.concatenate((y_train, y_train_flip), axis=0)
 
     ########### 3. Grid Search ###########
-    n_subsamples = 5000
+    n_subsamples = 5000 # Number of samples to use for grid search
     # Define the grid search parameters
-    eta_values = [0.01, 0.1, 1]
+    eta_values = [0.001, 0.01, 0.1, 1]
     n_epochs_values = [40]
     n_batch_values = [50, 100, 200, 400]
     lam_values = [0, 0.1, 1]
