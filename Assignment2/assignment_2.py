@@ -1,9 +1,10 @@
 import os
+import tqdm
 
 import numpy as np
 import pickle
 import torch
-
+import matplotlib.pyplot as plt
 
 # Global variable
 eps = 1e-9
@@ -131,7 +132,7 @@ def apply_network(X, net):
     return P
 
 
-def compute_loss(p, y, lam, net):
+def compute_cost(p, y, lam, net):
     n = p.shape[1]
     W1 = net["W"][0]
     W2 = net["W"][1]
@@ -140,6 +141,16 @@ def compute_loss(p, y, lam, net):
     reg_term = np.sum(W1**2) + np.sum(W2**2)
     J = cross_entropy + lam * reg_term
     return J
+
+
+def compute_accuracy(p, y):
+    return np.sum(np.argmax(p, axis=0) == y) / len(y)
+
+
+def compute_loss(p, y):
+    n = p.shape[1]
+    cross_entropy = -np.sum(y * np.log(p + eps)) / n
+    return cross_entropy
 
 
 def init_params(d: int, m: int):
@@ -219,8 +230,194 @@ def testing_grad(X_train, Y_train, y_train):
     assert np.mean(dist_b2) < 1, f"b2 mismatch too large: {np.mean(dist_b2)}"
 
 
-if __name__ == "__main__":
+def cyclical_learning_rate(n_min, n_max, step_size, epoch):
+    cycle = np.floor(1 + epoch / (2 * step_size))
+    x = np.abs(epoch / step_size - 2 * cycle + 1)
+    lr = n_min + (n_max - n_min) * np.maximum(0, (1 - x))
+    return lr
+
+
+def train_network(
+    X_train,
+    Y_train,
+    y_train,
+    X_validation,
+    Y_validation,
+    y_validation,
+    net,
+    lam,
+    n_min,
+    n_max,
+    step_size,
+    n_epochs,
+    batch_size,
+):
+    n_train = X_train.shape[1]
+
+    train_losses = []
+    validation_losses = []
+    train_accuracies = []
+    validation_accuracies = []
+    train_costs = []
+    validation_costs = []
+    iters = 0
+    for epoch in range(n_epochs):
+        print(f"Epoch {epoch + 1}")
+
+        # Shuffle training data
+        perm = np.random.permutation(n_train)
+        X_shuffled, Y_shuffled = X_train[:, perm], Y_train[:, perm]
+
+        # Mini-batch training
+        for i in range(0, n_train, batch_size):
+            lr = cyclical_learning_rate(n_min, n_max, step_size, iters)
+            iters += 1
+            batch_X = X_shuffled[:, i : i + batch_size]
+            batch_Y = Y_shuffled[:, i : i + batch_size]
+
+            P = apply_network(batch_X, net)
+            grads = backward_pass(batch_X, batch_Y, P, net, lam)
+
+            net["W"][0] -= lr * grads["W"][0]
+            net["b"][0] -= lr * grads["b"][0]
+            net["W"][1] -= lr * grads["W"][1]
+            net["b"][1] -= lr * grads["b"][1]
+
+        # Compute metrics on full datasets
+        P_train = apply_network(X_train, net)
+        P_val = apply_network(X_validation, net)
+
+        train_loss = compute_loss(P_train, Y_train)
+        validation_loss = compute_loss(P_val, Y_validation)
+
+        train_costs.append(compute_cost(P_train, Y_train, lam, net))
+        validation_costs.append(compute_cost(P_val, Y_validation, lam, net))
+
+        train_accuracies.append(compute_accuracy(P_train, y_train))
+        validation_accuracies.append(compute_accuracy(P_val, y_validation))
+
+        train_losses.append(train_loss)
+        validation_losses.append(validation_loss)
+
+    return (
+        train_losses,
+        validation_losses,
+        train_accuracies,
+        validation_accuracies,
+        train_costs,
+        validation_costs,
+    )
+
+
+def test_network(X_test, Y_test, y_test, net, lam):
+    P = apply_network(X_test, net)
+    accuracy = compute_accuracy(P, y_test)
+    loss = compute_loss(P, Y_test)
+    cost = compute_cost(P, Y_test, lam, net)
+    return accuracy, loss, cost
+
+
+def plot_costs(
+    train_costs,
+    validation_costs,
+):
+    plt.figure(figsize=(12, 5))
+    plt.plot(train_costs, label="Training Cost")
+    plt.plot(validation_costs, label="Validation Cost")
+    plt.legend()
+    plt.savefig("reports/imgs/assignment_2_cost_results_e3.png")
+
+def plot_accuracies(
+    train_accuracies,
+    validation_accuracies,
+):
+    plt.figure(figsize=(12, 5))
+    plt.plot(train_accuracies, label="Training Accuracy")
+    plt.plot(validation_accuracies, label="Validation Accuracy")
+    plt.legend()
+    plt.savefig("reports/imgs/assignment_2_accuracy_results_e3.png")
+
+def plot_losses(
+    train_losses,
+    validation_losses,
+):  
+    plt.figure(figsize=(12, 5))
+    plt.plot(train_losses, label="Training Loss")
+    plt.plot(validation_losses, label="Validation Loss")
+    plt.legend()
+    plt.savefig("reports/imgs/assignment_2_loss_results_e3.png")
+
+def check_gradients_setup():
     X_train, Y_train, y_train = load_batch(
         "./Datasets/cifar-10-batches-py/data_batch_1"
     )
     testing_grad(X_train, Y_train, y_train)
+
+def train_network_setup():
+    X_train, Y_train, y_train = load_batch(
+        "./Datasets/cifar-10-batches-py/data_batch_1"
+    )
+    X_validation, Y_validation, y_validation = load_batch(
+        "./Datasets/cifar-10-batches-py/data_batch_2"
+    )
+    X_test, Y_test, y_test = load_batch("./Datasets/cifar-10-batches-py/test_batch")
+
+    X_train, X_validation, X_test = normalize_data(X_train, X_validation, X_test)
+
+    d = X_train.shape[0]
+    m = 64
+    lam = 0.011
+    n_min = 1e-5
+    n_max = 1e-1
+    batch_size = 100
+    step_size = 500
+    
+    n_epochs = 10
+
+    net = init_params(d, m)
+
+    (
+        train_losses,
+        validation_losses,
+        train_accuracies,
+        validation_accuracies,
+        train_costs,
+        validation_costs,
+    ) = train_network(
+        X_train,
+        Y_train,
+        y_train,
+        X_validation,
+        Y_validation,
+        y_validation,
+        net,
+        lam,
+        n_min,
+        n_max,
+        step_size,
+        n_epochs,
+        batch_size,
+    )
+
+    plot_costs(
+        train_costs,
+        validation_costs,
+    )
+
+    plot_accuracies(
+        train_accuracies,
+        validation_accuracies,
+    )
+
+    plot_losses(
+        train_losses,
+        validation_losses,
+    )
+
+    accuracy, loss, cost = test_network(X_test, Y_test, y_test, net, lam)
+
+    print(f"Network performs with accuracy: {accuracy}, loss: {loss}, and cost: {cost}")
+
+if __name__ == "__main__":
+    # check_gradients_setup()
+    train_network_setup()
