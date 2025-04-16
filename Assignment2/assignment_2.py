@@ -1,5 +1,4 @@
 import os
-import tqdm
 
 import numpy as np
 import pickle
@@ -327,6 +326,7 @@ def plot_costs(
     plt.legend()
     plt.savefig("reports/imgs/assignment_2_cost_results_e3.png")
 
+
 def plot_accuracies(
     train_accuracies,
     validation_accuracies,
@@ -337,21 +337,24 @@ def plot_accuracies(
     plt.legend()
     plt.savefig("reports/imgs/assignment_2_accuracy_results_e3.png")
 
+
 def plot_losses(
     train_losses,
     validation_losses,
-):  
+):
     plt.figure(figsize=(12, 5))
     plt.plot(train_losses, label="Training Loss")
     plt.plot(validation_losses, label="Validation Loss")
     plt.legend()
     plt.savefig("reports/imgs/assignment_2_loss_results_e3.png")
 
+
 def check_gradients_setup():
     X_train, Y_train, y_train = load_batch(
         "./Datasets/cifar-10-batches-py/data_batch_1"
     )
     testing_grad(X_train, Y_train, y_train)
+
 
 def train_network_setup():
     X_train, Y_train, y_train = load_batch(
@@ -371,7 +374,7 @@ def train_network_setup():
     n_max = 1e-1
     batch_size = 100
     step_size = 500
-    
+
     n_epochs = 10
 
     net = init_params(d, m)
@@ -417,6 +420,7 @@ def train_network_setup():
     accuracy, loss, cost = test_network(X_test, Y_test, y_test, net, lam)
 
     print(f"Network performs with accuracy: {accuracy}, loss: {loss}, and cost: {cost}")
+
 
 if __name__ == "__main__":
     # check_gradients_setup()
