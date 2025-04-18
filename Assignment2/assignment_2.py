@@ -260,7 +260,11 @@ def train_network(
     dropout_rate=0.0,
     use_adam=False,
 ):
+
+
     n_train = X_train.shape[1]
+
+    print(f"Training setup: {n_train} training samples, {X_train.shape[0]} features, {cycles} cycles, {step_size} step size, {batch_size} batch size, {dropout_rate} dropout rate, {use_adam} use Adam optimizer")
 
     n_epochs = int(np.ceil(cycles * 2 * step_size / (X_train.shape[1] // batch_size)))
 
@@ -648,6 +652,7 @@ def train_network_setup_3():
     lambda_values = []
     train_accuracies_values = []
     validation_accuracies_values = []
+    test_accuracies_values = []
 
     l_min = -5
     l_max = -1
@@ -686,21 +691,23 @@ def train_network_setup_3():
             cycles,
             batch_size,
         )
+        accuracy, _, _ = test_network(X_test, Y_test, y_test, net, lam)
         lambda_values.append(lam)
         train_accuracies_values.append(train_accuracies[-1])
         validation_accuracies_values.append(validation_accuracies[-1])
-
-    # Order based on validation accuracy, from highest to lowest
-    sorted_indices = np.argsort(validation_accuracies_values)[::-1]
+        test_accuracies_values.append(accuracy)
+    # Order based on test accuracy, from highest to lowest
+    sorted_indices = np.argsort(test_accuracies_values)[::-1]
     lambda_values = np.array(lambda_values)[sorted_indices]
     train_accuracies_values = np.array(train_accuracies_values)[sorted_indices]
     validation_accuracies_values = np.array(validation_accuracies_values)[
         sorted_indices
     ]
+    test_accuracies_values = np.array(test_accuracies_values)[sorted_indices]
 
     for i in range(10):
         print(
-            f"Lambda: {lambda_values[i]}, Train accuracy: {train_accuracies_values[i]}, Validation accuracy: {validation_accuracies_values[i]}"
+            f"Lambda: {lambda_values[i]}, Train accuracy: {train_accuracies_values[i]}, Validation accuracy: {validation_accuracies_values[i]}, Test accuracy: {test_accuracies_values[i]}"
         )
 
     print("--------------------------------")
@@ -777,41 +784,65 @@ def train_network_setup_4():
 
     net = init_params(d, m)
 
-    # (
-    #     train_losses,
-    #     validation_losses,
-    #     train_accuracies,
-    #     validation_accuracies,
-    #     train_costs,
-    #     validation_costs,
-    # ) = train_network(
-    #     X_train,
-    #     Y_train,
-    #     y_train,
-    #     X_val,
-    #     Y_val,
-    #     y_val,
-    #     net,
-    #     lam,
-    #     n_min,
-    #     n_max,
-    #     step_size,
-    #     cycles,
-    #     batch_size,
-    #     dropout_rate,
-    # )
+    (
+        train_losses,
+        validation_losses,
+        train_accuracies,
+        validation_accuracies,
+        train_costs,
+        validation_costs,
+    ) = train_network(
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        net,
+        lam,
+        n_min,
+        n_max,
+        step_size,
+        cycles,
+        batch_size,
+        dropout_rate,
+    )
 
-    # plot_costs(train_costs, validation_costs, name)
-    # plot_accuracies(train_accuracies, validation_accuracies, name)
-    # plot_losses(train_losses, validation_losses, name)
+    plot_costs(train_costs, validation_costs, name)
+    plot_accuracies(train_accuracies, validation_accuracies, name)
+    plot_losses(train_losses, validation_losses, name)
 
-    # accuracy, loss, cost = test_network(X_test, Y_test, y_test, net, lam)
+    accuracy, loss, cost = test_network(X_test, Y_test, y_test, net, lam)
 
-    # print(f"Accuracy: {accuracy}, Loss: {loss}, Cost: {cost}")
+    print(f"Accuracy: {accuracy}, Loss: {loss}, Cost: {cost}")
+
+
+def train_network_setup_5():
+    print("--------- Exercise 6 ---------")
+
+    X_train, Y_train, y_train = load_batch(
+        "./Datasets/cifar-10-batches-py/data_batch_1"
+    )
+    X_val, Y_val, y_val = load_batch(
+        "./Datasets/cifar-10-batches-py/data_batch_2"
+    )
+    X_test, Y_test, y_test = load_batch("./Datasets/cifar-10-batches-py/test_batch")
+
+    X_train, X_val, X_test = normalize_data(X_train, X_val, X_test)
+
 
     print("Improving results with Adam Optimizer")
 
     # Training
+    m = 64
+    d = X_train.shape[0]
+    n_min = 1e-5
+    n_max = 1e-3
+    step_size = 800
+    cycles = 3
+    batch_size = 100
+    lam = 0.01
+    dropout_rate = 0.0
     name = "Adam Optimizer"
     use_adam = True
 
@@ -870,8 +901,12 @@ if __name__ == "__main__":
             "function": train_network_setup_3,
         },
         {
-            "name": "Improve results with more hidden units, dropout, data augmentation, and Adam optimizer",
+            "name": "Improve results with more hidden units, dropout, and data augmentation",
             "function": train_network_setup_4,
+        },
+        {
+            "name": "Improve results with Adam optimizer",
+            "function": train_network_setup_5,
         },
     ]
 
