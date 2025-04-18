@@ -1,3 +1,5 @@
 torch
 pyright
 matplotlib
+opencv-python
+numpy
