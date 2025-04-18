@@ -712,6 +712,62 @@ def train_network_setup_3():
 
     print("--------------------------------")
 
+    print(f"Optimal lambda: {lambda_values[0]}")
+    n_min = 1e-5
+    n_max = 1e-1
+    step_size = 800
+    cycles = 3
+    batch_size = 100
+    optimal_lambda = lambda_values[0]
+    name = "e4_optimal_lambda"
+
+    ####### 2. Training with optimal lambda #######
+    net = init_params(d, m)
+    (
+        train_losses,
+        validation_losses,
+        train_accuracies,
+        validation_accuracies,
+        train_costs,
+        validation_costs,
+    ) = train_network(
+        X_train,
+        Y_train,
+        y_train,
+        X_val,
+        Y_val,
+        y_val,
+        net,
+        optimal_lambda,
+        n_min,
+        n_max,
+        step_size,
+        cycles,
+        batch_size,
+    )
+
+    accuracy, loss, cost = test_network(X_test, Y_test, y_test, net, optimal_lambda)
+
+    plot_costs(
+        train_costs,
+        validation_costs,
+        name,
+    )
+
+    plot_accuracies(
+        train_accuracies,
+        validation_accuracies,
+        name,
+    )
+
+    plot_losses(
+        train_losses,
+        validation_losses,
+        name,
+    )
+
+    print(f"Network performs with accuracy: {accuracy}, loss: {loss}, and cost: {cost}")
+
 
 def train_network_setup_4():
     print("--------- Exercise 5 ---------")
@@ -835,8 +891,8 @@ def train_network_setup_5():
     d = X_train.shape[0]
     n_min = 1e-5
     n_max = 1e-3
-    step_size = 800
-    cycles = 3
+    step_size = 500
+    cycles = 1
     batch_size = 100
     lam = 0.01
     dropout_rate = 0.0
