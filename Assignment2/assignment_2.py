@@ -260,11 +260,11 @@ def train_network(
     dropout_rate=0.0,
     use_adam=False,
 ):
-
-
     n_train = X_train.shape[1]
 
-    print(f"Training setup: {n_train} training samples, {X_train.shape[0]} features, {cycles} cycles, {step_size} step size, {batch_size} batch size, {dropout_rate} dropout rate, {use_adam} use Adam optimizer")
+    print(
+        f"Training setup: {n_train} training samples, {X_train.shape[0]} features, {cycles} cycles, {step_size} step size, {batch_size} batch size, {dropout_rate} dropout rate, {use_adam} use Adam optimizer"
+    )
 
     n_epochs = int(np.ceil(cycles * 2 * step_size / (X_train.shape[1] // batch_size)))
 
@@ -823,13 +823,10 @@ def train_network_setup_5():
     X_train, Y_train, y_train = load_batch(
         "./Datasets/cifar-10-batches-py/data_batch_1"
     )
-    X_val, Y_val, y_val = load_batch(
-        "./Datasets/cifar-10-batches-py/data_batch_2"
-    )
+    X_val, Y_val, y_val = load_batch("./Datasets/cifar-10-batches-py/data_batch_2")
     X_test, Y_test, y_test = load_batch("./Datasets/cifar-10-batches-py/test_batch")
 
     X_train, X_val, X_test = normalize_data(X_train, X_val, X_test)
-
 
     print("Improving results with Adam Optimizer")
 
