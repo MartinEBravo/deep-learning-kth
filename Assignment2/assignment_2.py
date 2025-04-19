@@ -121,7 +121,7 @@ def relu(z):
     return np.maximum(0, z)
 
 
-def apply_network(X, net, dropout_rate=0, training=True):
+def apply_network(X, net, dropout_rate=0.0, training=True):
     W1 = net["W"][0]
     b1 = net["b"][0]
     W2 = net["W"][1]
@@ -274,6 +274,7 @@ def train_network(
     validation_accuracies = []
     train_costs = []
     validation_costs = []
+    m, v, t = {}, {}, 0
 
     if use_adam:
         m = {
@@ -302,6 +303,8 @@ def train_network(
             grads = backward_pass(batch_X, batch_Y, P, net, lam)
 
             if use_adam:
+                if "t" not in locals():
+                    t = 0
                 t += 1
                 net, m, v = adam_update(net, grads, m, v, t, lr)
             else:
@@ -369,7 +372,7 @@ def data_augmentation(X):
 
         tx = np.random.randint(-3, 4)
         ty = np.random.randint(-3, 4)
-        M_trans = np.float32([[1, 0, tx], [0, 1, ty]])
+        M_trans = np.array([[1, 0, tx], [0, 1, ty]], dtype=np.float32)
         for c in range(3):
             img[:, :, c] = cv2.warpAffine(
                 img[:, :, c], M_trans, (32, 32), borderMode=cv2.BORDER_REFLECT
