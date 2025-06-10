@@ -145,7 +145,7 @@ def compute_cost(p, y, lam, net):
     W2 = net["W"][1]
 
     cross_entropy = -np.sum(y * np.log(p + eps)) / n
-    reg_term = np.sum(W1**2) + np.sum(W2**2)
+    reg_term = np.sum(W1**2) + np.sum(W2**2)  # L2 Regularization
     J = cross_entropy + lam * reg_term
     return J
 
