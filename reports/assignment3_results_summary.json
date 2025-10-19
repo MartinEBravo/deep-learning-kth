@@ -1,0 +1,33 @@
+{
+  "arch5_label_smoothing": [
+    {
+      "name": "Arch5_LS",
+      "arch": {
+        "f": 4,
+        "n_filters": 40,
+        "hidden_dim": 300,
+        "stride": 4
+      },
+      "training": {
+        "n_cycles": 4,
+        "batch_size": 100,
+        "step": 800,
+        "n_min": 1e-05,
+        "n_max": 0.1,
+        "lam": 0.0025,
+        "num_classes": 10,
+        "eval_batch_size": 1000
+      },
+      "label_smoothing": 0.1,
+      "increasing": true,
+      "train_time_sec": 2868.781417131424,
+      "test_accuracy": 0.5554,
+      "test_loss": 1.419539994563949,
+      "val_accuracy": 0.57,
+      "val_loss": 1.3918808245300482,
+      "train_loss_final_logged": 0.6246428119644187,
+      "val_loss_final_logged": 1.6619915039368542,
+      "test_loss_final_logged": 1.419539994563949
+    }
+  ]
+}
