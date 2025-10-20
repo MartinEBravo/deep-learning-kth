@@ -1,5 +1,4 @@
 import numpy as np
-from config import eps
 
 
 def ReLU(s):
@@ -7,8 +6,10 @@ def ReLU(s):
 
 
 def softmax(s):
-    exp_s = np.exp(s - np.max(s, axis=0, keepdims=True))
-    return exp_s / np.sum(exp_s, axis=0, keepdims=True)
+    """
+    Maps an array of logits to a probability distribution.
+    """
+    return np.exp(s) / np.dot(np.ones(s.shape[0]), np.exp(s))
 
 
 def compute_accuracy(p, y_true):
@@ -38,16 +39,6 @@ def to_one_hot(y: np.ndarray):
     Converts a numpy array of labels to a one-hot encoded numpy array.
     """
     return np.eye(10)[y]
-
-
-def compute_loss(p, y, lam=0.0, net_params={"W1": 0, "W2": 0, "F": 0}):
-    W1 = net_params["W1"]
-    W2 = net_params["W2"]
-    F = net_params["F"]
-    n = p.shape[1]
-    cross_entropy = -np.sum(y * np.log(p + eps)) / n
-    reg_term = lam * (np.sum(W1**2) + np.sum(W2**2) + np.sum(F**2)) / (2 * n)
-    return cross_entropy + reg_term
 
 
 def cyclical_learning_rate(n_min, n_max, step_size, iteration):
