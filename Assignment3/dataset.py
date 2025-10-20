@@ -11,7 +11,7 @@ class CIFAR10Dataset:
     def _load_batch(self, cifar_dir: str):
         with open(cifar_dir, "rb") as fo:
             dict = pickle.load(fo, encoding="bytes")
-        X = dict[b"data"].astype(np.float64) / 255.0
+        X = dict[b"data"].astype(np.float32) / 255.0
         X = X.transpose()
         d = X.shape[0]
         n = X.shape[1]

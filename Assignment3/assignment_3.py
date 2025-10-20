@@ -42,7 +42,7 @@ if __name__ == "__main__":
     elif arch_name == "arch2":
         config = ExperimentConfig(
             f=4,
-            n_filters=3,
+            n_filters=10,
             hidden_dim=50,
         )
         logger = ExperimentLogger("arch2")

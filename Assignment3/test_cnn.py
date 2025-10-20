@@ -23,7 +23,7 @@ def test_convolution():
     # Execute convolutions using the CNN helpers
     # instantiate a minimal CNN to reuse its MX/conv code
     net = CNN(f=Fs.shape[0], n_filters=Fs.shape[3], hidden_dim=1, F=Fs)
-    MX = net._get_MX(X=X_ims)
+    MX = net.get_MX(X=X_ims)
     prediction = net._conv_step(MX)
 
     # Compare convolutions
@@ -92,7 +92,8 @@ def test_backward():
         F=Fs,
     )
 
-    net.backward(X=X_ims, Y=Y)
+    MX = net.get_MX(X_ims)
+    net.backward(MX=MX, Y=Y)
     assert np.allclose(net.dL_dF, grad_Fs), (
         "Filter gradients do not match expected values"
     )
@@ -125,10 +126,11 @@ def test_pytorch():
     dL_dF_torch, dL_dW1_torch, dL_db1_torch, dL_dW2_torch, dL_db2_torch = (
         compute_grads_with_torch(X, Y, net)
     )
+    
+    X = np.transpose(X.reshape((32, 32, 3, 5), order="F"), (1, 0, 2, 3))
+    MX = net.get_MX(X)
+    net.backward(MX, Y)
 
-    net.backward(
-        X=np.transpose(X.reshape((32, 32, 3, 5), order="F"), (1, 0, 2, 3)), Y=Y
-    )
     assert np.allclose(net.dL_dF, dL_dF_torch), (
         "Filter gradients do not match implemented gradients"
     )

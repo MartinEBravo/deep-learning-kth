@@ -28,6 +28,7 @@ class ExperimentConfig:
     eta_min: float = 1e-5
     eta_max: float = 1e-1
     batch_size: int = 100
+    iter_eval: int = 800
 
     # Regularization parameter
     lam: float = 0.003
@@ -66,8 +67,6 @@ class Experiment:
         # Get data
         X_train, Y_train, _ = dataset.get_training_data()
         X_test, Y_test, _ = dataset.get_test_data()
-
-        # Amount of samples
         n_train, n_test = X_train.shape[3], X_test.shape[3]
 
         # Shuffle data
@@ -94,9 +93,10 @@ class Experiment:
                 self.config.step,
                 it,
             )
-            self.cnn.backward(X_train_batch, Y_train_batch, self.config.lam, lr)
+            MX_train_batch = self.cnn.get_MX(X_train_batch)
+            self.cnn.backward(MX_train_batch, Y_train_batch, self.config.lam, lr)
 
-            if (it + 1) % 800 == 0 or it == 0:
+            if (it + 1) % self.config.iter_eval == 0:
                 avg_train_loss, avg_train_acc = self._compute_acc_loss(
                     X_train, Y_train, n_train // self.config.batch_size
                 )
@@ -110,19 +110,20 @@ class Experiment:
                     train_acc=avg_train_acc,
                     test_loss=avg_test_loss,
                     test_acc=avg_test_acc,
-                    time_elapsed=time.time() - start_time  # seconds elapsed since last log
+                    time_elapsed=time.time() - start_time
                 )
 
     def _compute_acc_loss(self, X, Y, n_batches):
         total_loss, total_acc = 0.0, 0.0
 
         for j in range(n_batches):
-            s = j * self.config.batch_size
-            e = s + self.config.batch_size
-            X_batch = X[:, :, :, s:e]
-            Y_batch = Y[:, s:e]
+            start = j * self.config.batch_size
+            end = start + self.config.batch_size
+            X_batch = X[:, :, :, start:end]
+            Y_batch = Y[:, start:end]
 
-            p_val = self.cnn.forward(X_batch)
+            MX_batch = self.cnn.get_MX(X_batch)
+            p_val = self.cnn.forward(MX_batch)
             total_loss += self.cnn.compute_loss(p_val, Y_batch, self.config.lam)
             total_acc += compute_accuracy(p_val, np.argmax(Y_batch, axis=0))
 

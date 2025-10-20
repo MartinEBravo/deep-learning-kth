@@ -44,44 +44,62 @@ class CNN:
         self.conv_dim = ((32 - self.f) // self.stride + 1) ** 2 * self.n_filters
 
         self.F = (
-            np.random.randn(self.f * self.f * 3, self.n_filters)
+            np.random.randn(self.f * self.f * 3, self.n_filters).astype(np.float32)
             * np.sqrt(2 / (self.f * self.f * 3))
             if F is None
             else F.reshape(self.f * self.f * 3, self.n_filters, order="C")
         )
         self.bF = np.zeros((self.n_filters, 1)) if bF is None else bF
         self.W1 = (
-            np.random.randn(self.hidden_dim, self.conv_dim) * np.sqrt(2 / self.conv_dim)
+            np.random.randn(self.hidden_dim, self.conv_dim) * np.sqrt(2 / self.conv_dim).astype(np.float32)
             if W1 is None
             else W1
         )
-        self.b1 = np.zeros((self.hidden_dim, 1)) if b1 is None else b1
+        self.b1 = np.zeros((self.hidden_dim, 1)).astype(np.float32) if b1 is None else b1
         self.W2 = (
-            np.random.randn(self.num_classes, self.hidden_dim)
+            np.random.randn(self.num_classes, self.hidden_dim).astype(np.float32)
             * np.sqrt(2 / self.hidden_dim)
             if W2 is None
             else W2
         )
-        self.b2 = np.zeros((self.num_classes, 1)) if b2 is None else b2
+        self.b2 = np.zeros((self.num_classes, 1)).astype(np.float32) if b2 is None else b2
 
     # Compute MX matrix for convolution
-    def _get_MX(self, X):
-        _, _, _, n = X.shape
-        n_patches = ((32 - self.f) // self.stride + 1) * (
-            (32 - self.f) // self.stride + 1
+    def get_MX(self, X):
+        # _, _, _, n = X.shape
+        # n_patches = ((32 - self.f) // self.stride + 1) * (
+        #     (32 - self.f) // self.stride + 1
+        # )
+
+        # # Compute MX
+        # MX = np.zeros((n_patches, self.f * self.f * 3, n))
+        # for i in range(n):
+        #     row_l = 0
+        #     for y in range(0, 32 - self.f + 1, self.stride):
+        #         for x in range(0, 32 - self.f + 1, self.stride):
+        #             X_patch = X[y : y + self.f, x : x + self.f, :, i]
+        #             MX[row_l, :, i] = X_patch.reshape((self.f * self.f * 3), order="C")
+        #             row_l += 1
+
+
+        # Efficient MX computation using strides
+        H, W, C, N = X.shape
+        out_h = (H - self.f) // self.stride + 1
+        out_w = (W - self.f) // self.stride + 1
+
+        shape = (out_h, out_w, self.f, self.f, C, N)
+        strides = (
+            X.strides[0] * self.stride,
+            X.strides[1] * self.stride,
+            X.strides[0],
+            X.strides[1],
+            X.strides[2],
+            X.strides[3],
         )
+        patches = np.lib.stride_tricks.as_strided(X, shape=shape, strides=strides)
+        MX = patches.reshape(out_h * out_w, self.f * self.f * C, N)
 
-        # Compute MX
-        MX = np.zeros((n_patches, self.f * self.f * 3, n))
-        for i in range(n):
-            row_l = 0
-            for y in range(0, 32 - self.f + 1, self.stride):
-                for x in range(0, 32 - self.f + 1, self.stride):
-                    X_patch = X[y : y + self.f, x : x + self.f, :, i]
-                    MX[row_l, :, i] = X_patch.reshape((self.f * self.f * 3), order="C")
-                    row_l += 1
-
-        return MX
+        return MX.astype(np.float32)
 
     # Efficient convolution using matrix multiplication
     def _conv_step(self, MX):
@@ -104,19 +122,17 @@ class CNN:
         return X1, p
 
     # Normal Forward pass
-    def forward(self, X):
-        MX = self._get_MX(X)
+    def forward(self, MX):
         conv_out = self._conv_step(MX)
         conv_flat = self._flat_step(conv_out)
         _, p = self._fc_step(conv_flat)
         return p
 
     # ---- Backward Functions -----
-    def _update_grads(self, X, Y, lam=0):
-        _, _, _, n = X.shape
+    def _update_grads(self, MX, Y, lam=0):
+        _, _, n = MX.shape
 
         # Forward
-        MX = self._get_MX(X)
         conv_out = self._conv_step(MX)
         conv_flat = self._flat_step(conv_out)
         X1, p = self._fc_step(conv_flat)
@@ -144,12 +160,12 @@ class CNN:
         self.dL_dW1 += 2 * lam * self.W1
         self.dL_dW2 += 2 * lam * self.W2
 
-    def backward(self, X, Y, lam=0.0, learning_rate=0.01):
+    def backward(self, MX, Y, lam=0.0, learning_rate=0.01):
         """
         Perform a backward pass and update parameters.
         """
         # compute and store grads
-        self._update_grads(X, Y, lam)
+        self._update_grads(MX, Y, lam)
         # apply parameter updates
         self.F -= learning_rate * self.dL_dF
         self.bF -= learning_rate * self.dL_dbF
