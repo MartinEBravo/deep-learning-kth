@@ -1,6 +1,7 @@
 import numpy as np
 from utils import (
     ReLU,
+    apply_label_smoothing,
     softmax,
 )
 from config import eps
@@ -44,25 +45,36 @@ class CNN:
         self.conv_dim = ((32 - self.f) // self.stride + 1) ** 2 * self.n_filters
 
         self.F = (
-            np.random.randn(self.f * self.f * 3, self.n_filters).astype(np.float32)
-            * np.sqrt(2 / (self.f * self.f * 3))
+            (
+                np.random.randn(self.f * self.f * 3, self.n_filters)
+                * np.sqrt(2 / (self.f * self.f * 3))
+            ).astype(np.float32)
             if F is None
             else F.reshape(self.f * self.f * 3, self.n_filters, order="C")
         )
-        self.bF = np.zeros((self.n_filters, 1)) if bF is None else bF
+        self.bF = np.zeros((self.n_filters, 1)).astype(np.float32) if bF is None else bF
         self.W1 = (
-            np.random.randn(self.hidden_dim, self.conv_dim) * np.sqrt(2 / self.conv_dim).astype(np.float32)
+            (
+                np.random.randn(self.hidden_dim, self.conv_dim)
+                * np.sqrt(2 / self.conv_dim)
+            ).astype(np.float32)
             if W1 is None
             else W1
         )
-        self.b1 = np.zeros((self.hidden_dim, 1)).astype(np.float32) if b1 is None else b1
+        self.b1 = (
+            np.zeros((self.hidden_dim, 1)).astype(np.float32) if b1 is None else b1
+        )
         self.W2 = (
-            np.random.randn(self.num_classes, self.hidden_dim).astype(np.float32)
-            * np.sqrt(2 / self.hidden_dim)
+            (
+                np.random.randn(self.num_classes, self.hidden_dim)
+                * np.sqrt(2 / self.hidden_dim)
+            ).astype(np.float32)
             if W2 is None
             else W2
         )
-        self.b2 = np.zeros((self.num_classes, 1)).astype(np.float32) if b2 is None else b2
+        self.b2 = (
+            np.zeros((self.num_classes, 1)).astype(np.float32) if b2 is None else b2
+        )
 
     # Compute MX matrix for convolution
     def get_MX(self, X):
@@ -80,7 +92,6 @@ class CNN:
         #             X_patch = X[y : y + self.f, x : x + self.f, :, i]
         #             MX[row_l, :, i] = X_patch.reshape((self.f * self.f * 3), order="C")
         #             row_l += 1
-
 
         # Efficient MX computation using strides
         H, W, C, N = X.shape
@@ -129,7 +140,7 @@ class CNN:
         return p
 
     # ---- Backward Functions -----
-    def _update_grads(self, MX, Y, lam=0):
+    def _update_grads(self, MX, Y, lam=0.0, label_smoothing=0.0):
         _, _, n = MX.shape
 
         # Forward
@@ -139,7 +150,7 @@ class CNN:
 
         # Backward
         # Fully Connected Layers
-        dL_ds = p - Y
+        dL_ds = p - apply_label_smoothing(Y, label_smoothing)
         self.dL_dW2 = (dL_ds @ X1.T) / n
         self.dL_db2 = np.sum(dL_ds, axis=1, keepdims=True) / n
         dL_X1 = self.W2.T @ dL_ds
@@ -156,16 +167,16 @@ class CNN:
         self.dL_dbF = (np.sum(GG, axis=(0, 2)).reshape(self.n_filters, 1)) / n
 
         # Regularization
-        self.dL_dF += 2 * lam * self.F
-        self.dL_dW1 += 2 * lam * self.W1
-        self.dL_dW2 += 2 * lam * self.W2
+        self.dL_dF += lam * self.F / n
+        self.dL_dW1 += lam * self.W1 / n
+        self.dL_dW2 += lam * self.W2 / n
 
-    def backward(self, MX, Y, lam=0.0, learning_rate=0.01):
+    def backward(self, MX, Y, lam=0.0, learning_rate=0.01, label_smoothing=0.0):
         """
         Perform a backward pass and update parameters.
         """
         # compute and store grads
-        self._update_grads(MX, Y, lam)
+        self._update_grads(MX, Y, lam, label_smoothing)
         # apply parameter updates
         self.F -= learning_rate * self.dL_dF
         self.bF -= learning_rate * self.dL_dbF
@@ -174,9 +185,11 @@ class CNN:
         self.W2 -= learning_rate * self.dL_dW2
         self.b2 -= learning_rate * self.dL_db2
 
-    def compute_loss(self, p, y, lam=0.0):
+    def compute_loss(self, p, y, lam=0.0, label_smoothing=0.0):
         n = p.shape[1]
-        cross_entropy = -np.sum(y * np.log(p + eps)) / n
+        cross_entropy = (
+            -np.sum(apply_label_smoothing(y, label_smoothing) * np.log(p + eps)) / n
+        )
         reg_term = (
             lam
             * (np.sum(self.W1**2) + np.sum(self.W2**2) + np.sum(self.F**2))

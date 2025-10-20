@@ -1,14 +1,13 @@
-from pathlib import Path
 import pprint
 from config import SUMMARY_PATH
 import json
 from cnn import CNN
 from dataset import CIFAR10Dataset
-from utils import cyclical_learning_rate, compute_accuracy
+from utils import compute_accuracy
+from learning_rate import LearningRateScheduler
 from dataclasses import dataclass
 import numpy as np
 from tqdm import tqdm
-import pprint
 import time
 
 pprint = pprint.PrettyPrinter(indent=4)
@@ -23,6 +22,7 @@ class ExperimentConfig:
     dataset: str = "CIFAR10"
 
     # Cyclic Learning Rate parameters
+    increasing: bool = False
     n_cycles = 3
     step: int = 800
     eta_min: float = 1e-5
@@ -32,6 +32,9 @@ class ExperimentConfig:
 
     # Regularization parameter
     lam: float = 0.003
+
+    # Label smoothing
+    label_smoothing: float = 0.0
 
 
 class ExperimentLogger:
@@ -77,6 +80,13 @@ class Experiment:
 
         iterations = self.config.n_cycles * (2 * self.config.step)
 
+        lr_scheduler = LearningRateScheduler(
+            n_min=self.config.eta_min,
+            n_max=self.config.eta_max,
+            step_size=self.config.step,
+            increasing=self.config.increasing,
+        )
+
         for it in tqdm(range(iterations)):
             # Mini-batch
             start = (it * self.config.batch_size) % n_train
@@ -87,14 +97,15 @@ class Experiment:
             )
 
             # Forward + backward
-            lr = cyclical_learning_rate(
-                self.config.eta_min,
-                self.config.eta_max,
-                self.config.step,
-                it,
-            )
+            lr = lr_scheduler.get_lr(it)
             MX_train_batch = self.cnn.get_MX(X_train_batch)
-            self.cnn.backward(MX_train_batch, Y_train_batch, self.config.lam, lr)
+            self.cnn.backward(
+                MX_train_batch,
+                Y_train_batch,
+                self.config.lam,
+                lr,
+                label_smoothing=self.config.label_smoothing,
+            )
 
             if (it + 1) % self.config.iter_eval == 0:
                 avg_train_loss, avg_train_acc = self._compute_acc_loss(
@@ -110,7 +121,7 @@ class Experiment:
                     train_acc=avg_train_acc,
                     test_loss=avg_test_loss,
                     test_acc=avg_test_acc,
-                    time_elapsed=time.time() - start_time
+                    time_elapsed=time.time() - start_time,
                 )
 
     def _compute_acc_loss(self, X, Y, n_batches):
@@ -124,14 +135,19 @@ class Experiment:
 
             MX_batch = self.cnn.get_MX(X_batch)
             p_val = self.cnn.forward(MX_batch)
-            total_loss += self.cnn.compute_loss(p_val, Y_batch, self.config.lam)
+            total_loss += self.cnn.compute_loss(
+                p_val,
+                Y_batch,
+                self.config.lam,
+                label_smoothing=self.config.label_smoothing,
+            )
             total_acc += compute_accuracy(p_val, np.argmax(Y_batch, axis=0))
 
         avg_loss = total_loss / n_batches
         avg_acc = total_acc / n_batches * 100
 
         return avg_loss, avg_acc
-    
+
     def run(self):
         if self.config.dataset == "CIFAR10":
             dataset = CIFAR10Dataset()

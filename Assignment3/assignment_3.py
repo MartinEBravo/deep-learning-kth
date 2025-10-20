@@ -34,9 +34,6 @@ if __name__ == "__main__":
             n_filters=3,
             hidden_dim=50,
         )
-        logger = ExperimentLogger("arch1")
-        experiment = Experiment(config, logger)
-        experiment.run()
 
     # Experiment 2
     elif arch_name == "arch2":
@@ -45,9 +42,6 @@ if __name__ == "__main__":
             n_filters=10,
             hidden_dim=50,
         )
-        logger = ExperimentLogger("arch2")
-        experiment = Experiment(config, logger)
-        experiment.run()
 
     # Experiment 3
     elif arch_name == "arch3":
@@ -56,9 +50,6 @@ if __name__ == "__main__":
             n_filters=40,
             hidden_dim=50,
         )
-        logger = ExperimentLogger("arch3")
-        experiment = Experiment(config, logger)
-        experiment.run()
 
     # Experiment 4
     elif arch_name == "arch4":
@@ -67,9 +58,61 @@ if __name__ == "__main__":
             n_filters=160,
             hidden_dim=50,
         )
-        logger = ExperimentLogger("arch4")
-        experiment = Experiment(config, logger)
-        experiment.run()
+
+    # Experiment 2 Longer with increasing LR
+    elif arch_name == "arch2_long":
+        config = ExperimentConfig(
+            f=4,
+            n_filters=10,
+            hidden_dim=50,
+            increasing=True,
+        )
+
+    # Experiment 3 Longer with Increasing LR
+    elif arch_name == "arch3_long":
+        config = ExperimentConfig(
+            f=8,
+            n_filters=40,
+            hidden_dim=50,
+            increasing=True,
+        )
+
+    # Experiment 2 Longer with more n_filters
+    elif arch_name == "arch2_long_more_filters":
+        config = ExperimentConfig(
+            f=4,
+            n_filters=40,
+            hidden_dim=50,
+            increasing=True,
+        )
+
+    # Experiment 5: Label Smoothing Baseline
+    elif arch_name == "arch5_baseline":
+        config = ExperimentConfig(
+            f=4,
+            n_filters=40,
+            hidden_dim=300,
+            increasing=False,
+            n_cycles=4,
+            lam=0.0025,
+            label_smoothing=0.0,
+        )
+
+    # Experiment 5: Label Smoothing
+    elif arch_name == "arch5_label_smoothing":
+        config = ExperimentConfig(
+            f=4,
+            n_filters=40,
+            hidden_dim=300,
+            increasing=False,
+            n_cycles=4,
+            lam=0.0025,
+            label_smoothing=0.1,
+        )
 
     else:
         raise ValueError(f"Unknown architecture name: {arch_name}")
+
+    logger = ExperimentLogger(arch_name)
+    experiment = Experiment(config, logger)
+    experiment.run()

@@ -126,7 +126,7 @@ def test_pytorch():
     dL_dF_torch, dL_dW1_torch, dL_db1_torch, dL_dW2_torch, dL_db2_torch = (
         compute_grads_with_torch(X, Y, net)
     )
-    
+
     X = np.transpose(X.reshape((32, 32, 3, 5), order="F"), (1, 0, 2, 3))
     MX = net.get_MX(X)
     net.backward(MX, Y)
