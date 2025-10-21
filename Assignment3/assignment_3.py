@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from config import eps
 from pathlib import Path
 import pickle
 import pprint
@@ -336,7 +335,7 @@ class CNN:
     def compute_loss(self, p, y, lam=0.0, label_smoothing=0.0):
         n = p.shape[1]
         cross_entropy = (
-            -np.sum(apply_label_smoothing(y, label_smoothing) * np.log(p + eps)) / n
+            -np.sum(apply_label_smoothing(y, label_smoothing) * np.log(p + label_smoothing)) / n
         )
         reg_term = (
             lam
