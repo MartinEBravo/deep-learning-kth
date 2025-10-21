@@ -16,17 +16,11 @@
 
 
 \section{Introduction}
-This assignment explores the implementation and optimization of a convolutional  neural network for image classification on the CIFAR-10 dataset. We investigate several key aspects of neural network training, including gradient computation, cyclic learning rates, regularization techniques, and optimization methods.
+This assignment explores the implementation and optimization of a convolutional  neural network for image classification on the CIFAR-10 dataset. We investigate several key aspects of training deep learning models, including the architecture of the network, learning rate schedules, and regularization techniques. The goal is to achieve high classification accuracy while maintaining efficient training times.
 
-The main objectives are to:
-\begin{itemize}
-    \item Implement and verify gradient computations for backpropagation
-    \item Study the effects of different hyperparameters like learning rate and regularization strength
-    \item Improve model performance through techniques like dropout, data augmentation, and Adam optimization
-\end{itemize}
+In this assignment, we explored the implementation and optimization of a convolutional neural network for image classification on the CIFAR-10 dataset. We investigated various techniques, including varying the architecture, using cyclic learning rates, and applying label smoothing.
 
-Through these experiments, we demonstrate how various components work together to create an effective neural network classifier, achieving improved accuracy while maintaining computational efficiency.
-
+Through our experiments, we found that increasing the cyclic learning rate can improve training performance, but it does not always lead to better generalization. We also discovered that label smoothing is an effective regularization technique that helps to reduce overfitting and improve the model's generalization capabilities. Overall, this assignment provided valuable insights into the design and optimization of convolutional neural networks for image classification tasks.
 
 
 \section{Dataset and Preprocessing}
@@ -40,18 +34,22 @@ The CIFAR-10 dataset consists of $32\times32$ color images belonging to 10 class
 
 \section{Background}
 
-\subsection{2-layer Network}
-The architecture of the network is a 2-layer network. This is one of the simplest forms of neural networks, often referred to as a Multi-Layer Perceptron (MLP). The input to the network is a vectorized image of size $d = 32 \times 32 \times 3 = 3072$, where each image is flattened into a one-dimensional vector. The network consists of the following components:
+\subsection{Convolutional Neural Network Architecture}
+The architecture of the network is a 3-layer network. The first layer is a convolutional layer with ReLU activation, followed by a fully connected layer with ReLU activation, and finally an output layer with softmax activation.
+The input to the network is a flattened image vector $x$ of size $3072 \times 1$ (since each CIFAR-10 image has dimensions $32 \times 32 \times 3$). The parameters of the network include:
 
 \begin{itemize}
-    \item A weight matrix $W_1$ of size $3072 \times m$, where $m$ is the number of hidden units.
+    \item A convolutional layer with $n_f$ filters of size $f \times f \times 3$, stride $f$.
+    \item A weight matrix $W_1$ of size $n_p n_f \times m$, where $n_p = (32/f) \times (32/f)$ is the number of patches after convolution, and $m$ is the number of hidden units in the fully connected layer.
     \item A bias vector $b_1$ of size $m \times 1$.
     \item A weight matrix $W_2$ of size $m \times 10$, where $10$ is the number of classes.
     \item A bias vector $b_2$ of size $10 \times 1$.
 \end{itemize}
 
 To compute the output of the network, we first compute the scores for each class as:
-\[s_1 = W_1 x + b_1, \quad z = \text{ReLU}(s_1), \quad s_2 = W_2 z + b_2, \quad p = \text{Softmax}(s_2)\]
+\[h = \text{Conv}(x, W_{conv})\]
+where $\text{Conv}$ denotes the convolution operation with the filters $W_{conv}$. The output $h$ is then flattened into a vector of size $n_p n_f \times 1$ and passed through the fully connected layers:
+\[s_1 = W_1 h + b_1, \quad z = \text{ReLU}(s_1), \quad s_2 = W_2 z + b_2, \quad p = \text{Softmax}(s_2)\]
 
 The predicted class is then given by:
 \[
@@ -73,14 +71,13 @@ We use a linear increase and decrease of the learning rate, with a period of $T$
 where $t$ is the current iteration, $T$ is the total number of iterations, $n_s$ is the step size, $\eta_{min}$ is the minimum learning rate, and $\eta_{max}$ is the maximum learning rate.
 
 
-\subsection{Dropout}
+\subsection{Increasing Learning Rate} 
 
-Dropout is a regularization technique that randomly drops out units (neurons) during training. This helps prevent overfitting by forcing the network to learn more robust and diverse features.
+Another technique we explored is increasing the learning rate over time. This is done by starting with a step size of $n_s$ and increasing it by a factor of 2 every cycle. This allows the model to be trained for longer periods.
 
-\subsection{Adam Optimizer}
+\subsection{Label Smoothing}
 
-Adam is an optimizer that uses the first and second moments of the gradient to update the parameters. It is a popular optimizer for deep learning, and is known to converge faster than other optimizers such as SGD.
-
+Label smoothing is a regularization technique that replaces the one-hot encoded labels with a smoothed version. Instead of using a hard label of 1 for the correct class and 0 for the incorrect classes, we use a soft label that assigns a small probability to the incorrect classes. This helps to prevent overfitting and improves generalization.
 
 \subsection{Checking gradients computation}
 
@@ -95,265 +92,153 @@ We test that the distance between the gradients is less than a constant value $\
 \newpage
 
 \section{Results}
-We conducted four main experiments, we first get the results of figure 3 and 4 from the assignment description, then we find the optimal $\lambda$ for the network, then we improve the results with more hidden units, dropout, and data augmentation. Finally, we use the Adam optimizer to see if it improves the results.
+We conducted three main experiments, first we varied the number of filters and stride in the convolutional layer, then we explored the effect of using an increasing cyclic learning rate, and finally we tested the impact of label smoothing on the model's performance.
 
-\subsection{Experiment 1: Replicating the results for 1 cycle and 3 cycles}
 
-We run the network with the parameters specified in the assignment description and get the results shown in Figure \ref{fig:experiment1} and Figure \ref{fig:experiment2}, we compare the accuracy, loss, and cost on the testing set in Table \ref{tab:experiment1}.
+\subsection{Experiment 1: Varying number of filters and stride}
+
+The convolutional layer's parameters, specifically the number of filters ($n_f$) and the stride ($f$), play a crucial role in determining the model's capacity and performance. We experimented with different configurations to observe their effects on training and validation accuracy.
 
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_accuracy_results_e3.png}
-        \caption{Accuracy}
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch1.pdf}
+        \caption{$f$=2, $n_f$=3}
     \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_loss_results_e3.png}
-        \caption{Loss}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch2.pdf}
+        \caption{$f$=4, $n_f$=10}
     \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_cost_results_e3.png}
-        \caption{Cost}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch3.pdf}
+        \caption{$f$=8, $n_f$=40}
     \end{subfigure}
-    \caption{Networks parameters: $m = 64$, $\lambda = 0.01$, $\eta_{min} = 1e-5$, $\eta_{max} = 1e-1$, $n_s = 500$, $cycles = 1$, batch\_size = 100}
-    \label{fig:experiment1}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch4.pdf}
+        \caption{$f$=16, $n_f$=160}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch1.pdf}
+        \caption{$f$=2, $n_f$=3}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch2.pdf}
+        \caption{$f$=4, $n_f$=10}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch3.pdf}
+        \caption{$f$=8, $n_f$=40}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.24\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch4.pdf}
+        \caption{$f$=16, $n_f$=160}
+    \end{subfigure}
+    \caption{Training and validation accuracy and loss for different architectures}
+    \label{fig:arch1_4}
 \end{figure}
 
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_accuracy_results_e4.png}
-        \caption{Accuracy}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_loss_results_e4.png}
-        \caption{Loss}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_cost_results_e4.png}
-        \caption{Cost}
-    \end{subfigure}
-    \caption{Networks parameters: $m = 64$, $\lambda = 0.01$, $\eta_{min} = 1e-5$, $\eta_{max} = 1e-1$, $n_s = 800$, $cycles = 3$, batch\_size = 100}
-    \label{fig:experiment2}
+    \includegraphics[width=0.3\textwidth]{imgs/compare_times.pdf}
+    \caption{Comparison of training times for different architectures}
+    \label{fig:compare_times}
 \end{figure}
+
+We can see that adding the convolutional layer, even with a small number of filters and a small stride, such as $f$=2, $n_f$=3, significantly improves the model's performance compared to a simple linear classifier. As we increase the number of filters and the stride, the model's capacity increases, leading to better training and validation accuracy. However, we also observe that larger architectures take way more time to train, as shown in Figure \ref{fig:compare_times}. Besides, very large architectures tend to overfit the training data, leading to a huge gap between training and validation accuracy as we can see in the case of $f$=16, $n_f$=160. We found that the best trade-off between performance and training time was achieved with $f$=4, $n_f$=10 and $f$=8, $n_f$=40, achieving validation accuracies of around 60\% in a reasonable training time and without overfitting too much. We will use these architectures for the next experiments.
+
+
 
 \newpage
 
-% --------- Exercise 3 ---------
-% Training with 1 cycle
-% Training setup: 10000 training samples, 3072 features, 1 cycles, 500 step size, 100 batch size, 0.0 dropout rate, False use Adam optimizer
-% Epochs: 100%|█████████████| 10/10 [00:13<00:00,  1.37s/it]
-% Network performs with accuracy: 0.4731, loss: 1.5159828323591822, and cost: 1.797066046434232
-% --------------------------------
-% --------------------------------
-% Running Train network from figure 4
-% --------- Exercise 4 ---------
-% Training with 3 cycles
-% Training setup: 10000 training samples, 3072 features, 3 cycles, 800 step size, 100 batch size, 0.0 dropout rate, False use Adam optimizer
-% Epochs: 100%|█████████████| 48/48 [00:53<00:00,  1.11s/it]
-% Network performs with accuracy: 0.4798, loss: 1.5034834341841317, and cost: 1.8432568886743304
+\subsection{Experiment 2: Increasing Cyclic Learning Rate}
 
-\begin{table}[h]
-    \centering
-    \begin{tabular}{|c|c|c|c|}
-    \hline
-    \textbf{Experiment} & \textbf{Accuracy} & \textbf{Loss} & \textbf{Cost} \\
-    \hline
-    \textbf{1 cycle} & 0.4731 & 1.5159 & 1.7970 \\
-    \textbf{3 cycles} & 0.4798 & 1.5034 & 1.8432 \\
-    \hline
-\end{tabular}
-\caption{Comparing the accuracy, loss, and cost on the testing set for 1 cycle and 3 cycles networks}
-\label{tab:experiment1}
-\end{table}
-
-We can see in Table \ref{tab:experiment1} that the 3 cycles network performs better than the 1 cycle network, but not by much. This improvement is expected, since if we use 3 cycles of the learning rate, each cycle will imply more epochs where the model is trained. We can appreciate that in the last cycles, the plots experience divergence, but this is fixed at the end of the cycle, generally achieving better results than the past cycles, this is due to the nature of the cyclic learning rate.
-
-
-\subsection{Experiment 2: Finding the optimal $\lambda$}
-
-For the next experiment, the goal is to find the optimal $\lambda$ for the network. We run the network with different values of $\lambda$, we sample them by using the formula:
-
-\begin{equation}
-    \log_{10}(\lambda) = \log_{10}(\lambda_{min}) + \text{random(0, 1)} (\log_{10}(\lambda_{max}) - \log_{10}(\lambda_{min}))
-\end{equation}
-
-where our $\log_{10}(\lambda_{min}) = -5$ and $\log_{10}(\lambda_{max}) = -1$. We run the network with these values and get the results shown in Table \ref{tab:experiment2}.
-
-
-\begin{table}[h!]
-    \centering
-    \begin{tabular}{|c|c|c|c|}
-    \hline
-    \textbf{$\lambda$} & \textbf{Train Accuracy} & \textbf{Validation Accuracy} & \textbf{Test Accuracy} \\
-    \hline
-    \textbf{0.0011} & \textbf{0.5637} & \textbf{0.5116} & \textbf{0.5142} \\
-    0.0000215 & 0.5670 & 0.5194 & 0.5138 \\
-    0.0078 & 0.5404 & 0.5122 & 0.5088 \\
-    0.000081 & 0.5662 & 0.5216 & 0.5083 \\
-    0.0007 & 0.5648 & 0.5182 & 0.5081 \\
-    0.0000176 & 0.5632 & 0.5156 & 0.5064 \\
-    0.0000198 & 0.5695 & 0.5138 & 0.5053 \\
-    0.0167 & 0.5095 & 0.4916 & 0.4945 \\
-    0.0204 & 0.5004 & 0.4856 & 0.4845 \\
-    0.0949 & 0.3912 & 0.3788 & 0.3918 \\
-    \hline
-    \end{tabular}
-    \caption{Model performance for different values of $\lambda$. The best test accuracy is highlighted in \textbf{bold}.}
-    \label{tab:experiment2}
-\end{table}
-
-We estimate that the optimal $\lambda \approx 0.001$, for this we run the network and get the results shown in the figure below.
+We implemented an increasing cyclic learning rate, where the step size $n_s$ is doubled every cycle. This allows the model to be trained for longer periods, potentially leading to better convergence and improved performance. We tested this technique on the two best architectures from the previous experiment: $f$=4, $n_f$=10 and $f$=8, $n_f$=40. Additionally, we tested the effect of increasing the number of filters to $n_f$=40 for the $f$=4 architecture.
 
 \begin{figure}[h!]
     \centering
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_accuracy_results_e4_optimal_lambda.png}
-        \caption{Accuracy}
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch2_long.pdf}
+        \caption{$f$=4, $n_f$=10, increased cyclic LR}
     \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_loss_results_e4_optimal_lambda.png}
-        \caption{Loss}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch3_long.pdf}
+        \caption{$f$=8, $n_f$=40, increased cyclic LR}
     \end{subfigure}
-    \begin{subfigure}[b]{0.45\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{imgs/assignment_2_cost_results_e4_optimal_lambda.png}
-        \caption{Cost}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch2_long_more_filters.pdf}
+        \caption{$f$=4, $n_f$=40, increased cyclic LR}
     \end{subfigure}
-    \caption{Networks parameters: $m = 64$, $\lambda = 0.001$, $\eta_{min} = 1e-5$, $\eta_{max} = 1e-1$, $n_s = 800$, $cycles = 3$, batch\_size = 100}
-    \label{fig:experiment2_optimal_lambda}
+    \vfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch2_long.pdf}
+        \caption{$f$=4, $n_f$=10, increased cyclic LR}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch3_long.pdf}
+        \caption{$f$=8, $n_f$=40, increased cyclic LR}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch2_long_more_filters.pdf}
+        \caption{$f$=4, $n_f$=40, increased cyclic LR}
+    \end{subfigure}
+    \caption{Training and validation accuracy and loss for architectures with increased cyclic learning rate}
+    \label{fig:arch2_3_long}
 \end{figure}
 
-\begin{table}[h!]
-    \centering
-    \begin{tabular}{|c|c|c|c|}
-    \hline
-    \textbf{Experiment} & \textbf{Accuracy} & \textbf{Loss} & \textbf{Cost} \\
-    \hline
-    \textbf{1 cycle} & 0.4731 & 1.5159 & 1.7970 \\
-    \textbf{3 cycles} & 0.4798 & 1.5034 & 1.8432 \\
-    \textbf{Optimal $\lambda$} & 0.5142 & 1.4945 & 1.7969 \\
-    \hline
-    \end{tabular}
-    \caption{Comparing the accuracy, loss, and cost on the testing set for 1 cycle and 3 cycles networks}
-    \label{tab:experiment2_optimal_lambda}
-\end{table}
-
-We can see in Table \ref{tab:experiment2_optimal_lambda} that using this value of $\lambda$ we get the best results, we can see that the accuracy increases by almost 4\% compared to the previous best results. Analyzing the loss and cost plots in Figure \ref{fig:experiment2_optimal_lambda}, we can see that the training is more stable, we still have the divergence caused by the cyclic learning rate, but it is not as severe as before. Improving the regularization of the network made the learning smoother and more stable.
+We can see that using an increasing cyclic learning rate leads to improved training accuracy. Almost all architectures reach training accuracies above 80\%. However, the validation accuracy does not improve significantly, where most of the architectures reach around 60\%. This indicates that while the model is able to fit the training data better, it does not generalize much better to unseen data. 
+The architecture with $f$=4 and $n_f$=10 reaches a validation accuracy of around 60\%, but having a good ratio of training to validation accuracy, suggesting that it generalizes better than the other architectures.
+The architecture with $f$=8 and $n_f$=40 achieves the best validation accuracy of around 62\%, suggesting that increasing the number of filters can help improve performance, but at the cost of having overfitting more to the training data (training accuracy of almost 90\%).
+Finally, the architecture with $f$=4 and $n_f$=40 achieves a similar problem, the validation accuracy increases but the training accuracy is much higher, indicating overfitting. We can conclude that while increasing the cyclic learning rate helps improve training performance, it does not necessarily lead to better generalization, and care must be taken to avoid overfitting. We will tackle this in the next experiment using label smoothing.
 
 \newpage
 
-\subsection{Experiment 3: Improving results with more hidden units, dropout, and data augmentation}
+\subsection{Experiment 3: Label Smoothing}
 
-% --------------------------------
-% Running Improve results with more hidden units, dropout, and data augmentation
-% --------- Exercise 5 ---------
-% Improving results, with more hidden units, dropout, and data augmentation
-% Training setup: 90000 training samples, 3072 features, 5 cycles, 900 step size, 100 batch size, 0.2 dropout rate, False use Adam optimizer
-% Epochs: 100%|████████████| 10/10 [26:51<00:00, 161.13s/it]
-% Accuracy: 0.5311, Loss: 1.3546671361649176, Cost: 1.532303311974826
+We implemented label smoothing as a regularization technique to help improve generalization and reduce overfitting. We tested this technique on the architecture with $f$=4, $n_f$=40 and $n_h$=300, which showed signs of overfitting in the previous experiment. We also use cyclic learning rates with an extra cycle of training:
 
-% def data_augmentation(X):
-%     X_aug = X.copy()
-%     N = X.shape[1]
-
-%     for i in range(N):
-%         img = X_aug[:, i].reshape(3, 32, 32).transpose(1, 2, 0)  # (32, 32, 3)
-
-%         if np.random.rand() > 0.5:
-%             img = np.fliplr(img)
-
-%         tx = np.random.randint(-3, 4)
-%         ty = np.random.randint(-3, 4)
-%         M_trans = np.float32([[1, 0, tx], [0, 1, ty]])
-%         for c in range(3):
-%             img[:, :, c] = cv2.warpAffine(
-%                 img[:, :, c], M_trans, (32, 32), borderMode=cv2.BORDER_REFLECT
-%             )
-
-%         angle = np.random.uniform(-15, 15)
-%         M_rot = cv2.getRotationMatrix2D((16, 16), angle, 1)
-%         for c in range(3):
-%             img[:, :, c] = cv2.warpAffine(
-%                 img[:, :, c], M_rot, (32, 32), borderMode=cv2.BORDER_REFLECT
-%             )
-
-%         X_aug[:, i] = img.transpose(2, 0, 1).reshape(-1)
-
-%     return X_aug
-
-For the following experiment, we train the network with more hidden units ($m = 512$), dropout ($p = 0.2$), and data augmentation (where we randomly flip the images, translate them, and rotate them). We get the results shown in Table \ref{tab:experiment3}.
-
-\begin{table}[h!]
+\begin{figure}[h!]
     \centering
-    \begin{tabular}{|c|c|c|c|}
-    \hline
-    \textbf{Experiment} & \textbf{Accuracy} & \textbf{Loss} & \textbf{Cost} \\
-    \hline
-    \textbf{1 cycle} & 0.4731 & 1.5159 & 1.7970 \\
-    \textbf{3 cycles} & 0.4798 & 1.5034 & 1.8432 \\
-    \textbf{Hidden units + dropout + data augmentation (3 cycles)} & 0.5311 & 1.3546 & 1.5323 \\
-    \hline
-    \end{tabular}
-    \caption{Comparing the accuracy, loss, and cost on the testing set for 1 cycle, 3 cycles, and hidden units + dropout + data augmentation networks}
-    \label{tab:experiment3}
-\end{table}
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch5_baseline.pdf}
+        \caption{$f$=4, $n_f$=40, $n_h$=300, baseline}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{imgs/accuracy_arch_arch5_label_smoothing.pdf}
+        \caption{$f$=4, $n_f$=40, $n_h$=300, label smoothing}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch5_baseline.pdf}
+        \caption{$f$=4, $n_f$=40, $n_h$=300, baseline}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \includegraphics[width=\textwidth]{imgs/loss_arch_arch5_label_smoothing.pdf}
+        \caption{$f$=4, $n_f$=40, $n_h$=300, label smoothing}
+    \end{subfigure}
+    \caption{Training and validation accuracy for architecture 5 with and without label smoothing}
+    \label{fig:arch5}
+\end{figure}
 
-We can see that the accuracy increases by 6\% compared to the previous best results, making this network the best performing one so far. The hidden units allows the model to learn more complex features, the dropout helps prevent overfitting, and the data augmentation helps the model generalize better.
-
-
-\subsection{Experiment 4: Using Adam optimizer}
-
-
-% --------------------------------
-% Running Improve results with Adam optimizer
-% --------- Exercise 6 ---------
-% Improving results with Adam Optimizer
-% Training setup: 10000 training samples, 3072 features, 3 cycles, 800 step size, 100 batch size, 0.0 dropout rate, True use Adam optimizer
-% Epochs: 100%|█████████████| 48/48 [01:25<00:00,  1.78s/it]
-% Accuracy: 0.4754, Loss: 1.497265002251512, Cost: 1.7969284385458661
-% --------------------------------
-
-We train the network with the Adam optimizer and get the results shown in Table \ref{tab:experiment4}.
-
-\begin{table}[h!]
-    \centering
-    \begin{tabular}{|c|c|c|c|}
-    \hline
-    \textbf{Experiment} & \textbf{Accuracy} & \textbf{Loss} & \textbf{Cost} \\
-    \hline
-    \textbf{1 cycle} & 0.4731 & 1.5159 & 1.7970 \\
-    \textbf{Adam optimizer (1 cycle)} & 0.4754 & 1.4972 & 1.7969 \\
-    \hline
-    \end{tabular}
-    \caption{Comparing the accuracy, loss, and cost on the testing set for 1 cycle, and Adam optimizer networks}
-    \label{tab:experiment4}
-\end{table}
-
-We can see in Table \ref{tab:experiment4} that using the Adam optimizer we get slightly better results than the 1 cycles network, but not by much. This is due to the fact that the Adam optimizer makes the learning faster due to the momentum.
-
-
-\newpage
+We can see that using label smoothing helps to reduce the previous problem, as the gap between training and validation loss is smaller compared to the baseline. Analyzing the loss plots, label smoothing helps to stabilize the training process, leading to a smoother decrease of the gap between training and validation loss. Overall, label smoothing proves to be an effective regularization technique that enhances the model's analysis step and generalization capabilities.
 
 \section{Conclusion}
-In this assignment, we implemented a two-layer neural network for image classification on the CIFAR-10 dataset. We explored several techniques to improve the network's performance:
 
-\begin{itemize}
-    \item Using multiple cycles in the learning rate schedule improved accuracy from 47.31\% to 47.98\%
-    \item Adding more hidden units, dropout, and data augmentation further increased accuracy to 53.11\%
-    \item The Adam optimizer provided marginal improvements over standard SGD
-\end{itemize}
+In this assignment, we explored the implementation and optimization of a convolutional neural network for image classification on the CIFAR-10 dataset. We investigated various techniques, including varying the architecture, using cyclic learning rates, and applying label smoothing.
 
-The best performing model achieved 53.11\% accuracy on the test set, demonstrating the effectiveness of combining multiple optimization techniques. While this is a significant improvement over the baseline, there is still room for better performance through techniques like deeper architectures, batch normalization, or more sophisticated data augmentation.
-
+Through our experiments, we found that increasing the cyclic learning rate can improve training performance, but it does not always lead to better generalization. We also discovered that label smoothing is an effective regularization technique that helps to reduce overfitting and improve the model's generalization capabilities. Overall, this assignment provided valuable insights into the design and optimization of convolutional neural networks for image classification tasks.
 
 
 \end{document}
