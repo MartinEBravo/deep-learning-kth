@@ -89,8 +89,6 @@ In order to check the correctness of the gradients computation, we compared our 
 
 We test that the distance between the gradients is less than a constant value $\delta$.
 
-\newpage
-
 \section{Results}
 We conducted three main experiments, first we varied the number of filters and stride in the convolutional layer, then we explored the effect of using an increasing cyclic learning rate, and finally we tested the impact of label smoothing on the model's performance.
 
@@ -153,10 +151,6 @@ The convolutional layer's parameters, specifically the number of filters ($n_f$)
 
 We can see that adding the convolutional layer, even with a small number of filters and a small stride, such as $f$=2, $n_f$=3, significantly improves the model's performance compared to a simple linear classifier. As we increase the number of filters and the stride, the model's capacity increases, leading to better training and validation accuracy. However, we also observe that larger architectures take way more time to train, as shown in Figure \ref{fig:compare_times}. Besides, very large architectures tend to overfit the training data, leading to a huge gap between training and validation accuracy as we can see in the case of $f$=16, $n_f$=160. We found that the best trade-off between performance and training time was achieved with $f$=4, $n_f$=10 and $f$=8, $n_f$=40, achieving validation accuracies of around 60\% in a reasonable training time and without overfitting too much. We will use these architectures for the next experiments.
 
-
-
-\newpage
-
 \subsection{Experiment 2: Increasing Cyclic Learning Rate}
 
 We implemented an increasing cyclic learning rate, where the step size $n_s$ is doubled every cycle. This allows the model to be trained for longer periods, potentially leading to better convergence and improved performance. We tested this technique on the two best architectures from the previous experiment: $f$=4, $n_f$=10 and $f$=8, $n_f$=40. Additionally, we tested the effect of increasing the number of filters to $n_f$=40 for the $f$=4 architecture.
@@ -200,8 +194,6 @@ We can see that using an increasing cyclic learning rate leads to improved train
 The architecture with $f$=4 and $n_f$=10 reaches a validation accuracy of around 60\%, but having a good ratio of training to validation accuracy, suggesting that it generalizes better than the other architectures.
 The architecture with $f$=8 and $n_f$=40 achieves the best validation accuracy of around 62\%, suggesting that increasing the number of filters can help improve performance, but at the cost of having overfitting more to the training data (training accuracy of almost 90\%).
 Finally, the architecture with $f$=4 and $n_f$=40 achieves a similar problem, the validation accuracy increases but the training accuracy is much higher, indicating overfitting. We can conclude that while increasing the cyclic learning rate helps improve training performance, it does not necessarily lead to better generalization, and care must be taken to avoid overfitting. We will tackle this in the next experiment using label smoothing.
-
-\newpage
 
 \subsection{Experiment 3: Label Smoothing}
 
