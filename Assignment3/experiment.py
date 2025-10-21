@@ -20,10 +20,11 @@ class ExperimentConfig:
     n_filters: int = 10
     hidden_dim: int = 50
     dataset: str = "CIFAR10"
+    random_seed: int = 42
 
     # Cyclic Learning Rate parameters
     increasing: bool = False
-    n_cycles = 3
+    n_cycles: int = 3
     step: int = 800
     eta_min: float = 1e-5
     eta_max: float = 1e-1
@@ -62,6 +63,7 @@ class Experiment:
             f=config.f,
             n_filters=config.n_filters,
             hidden_dim=config.hidden_dim,
+            random_seed=config.random_seed,
         )
 
     def _train_model(self, dataset: CIFAR10Dataset):
@@ -78,14 +80,16 @@ class Experiment:
         X_train, Y_train = (X_train[:, :, :, indices_train], Y_train[:, indices_train])
         X_test, Y_test = (X_test[:, :, :, indices_test], Y_test[:, indices_test])
 
-        iterations = self.config.n_cycles * (2 * self.config.step)
-
+        # Initialize learning rate scheduler
         lr_scheduler = LearningRateScheduler(
             n_min=self.config.eta_min,
             n_max=self.config.eta_max,
             step_size=self.config.step,
             increasing=self.config.increasing,
+            n_cycles=self.config.n_cycles,
         )
+        iterations = lr_scheduler.get_total_iterations()
+        cycle_iters = lr_scheduler.get_cycle_mid_end_iters()
 
         for it in tqdm(range(iterations)):
             # Mini-batch
@@ -102,12 +106,17 @@ class Experiment:
             self.cnn.backward(
                 MX_train_batch,
                 Y_train_batch,
-                self.config.lam,
-                lr,
+                lam=self.config.lam,
+                learning_rate=lr,
                 label_smoothing=self.config.label_smoothing,
             )
 
-            if (it + 1) % self.config.iter_eval == 0:
+            if (it + 1) in cycle_iters or it == 0:
+                current_cycle = next(
+                    i + 1
+                    for i, end_iter in enumerate(cycle_iters)
+                    if it + 1 <= end_iter
+                )
                 avg_train_loss, avg_train_acc = self._compute_acc_loss(
                     X_train, Y_train, n_train // self.config.batch_size
                 )
@@ -116,6 +125,7 @@ class Experiment:
                 )
                 self.logger.log(
                     config=vars(self.config),
+                    cycle=current_cycle,
                     iteration=it + 1,
                     train_loss=avg_train_loss,
                     train_acc=avg_train_acc,

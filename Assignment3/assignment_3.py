@@ -26,6 +26,7 @@ if __name__ == "__main__":
         test_backward()
         test_pytorch()
         print("All tests passed!")
+        exit(0)
 
     # Experiment 1
     elif arch_name == "arch1":

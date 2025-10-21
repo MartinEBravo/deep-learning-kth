@@ -21,7 +21,9 @@ class CNN:
         b1=None,
         W2=None,
         b2=None,
+        random_seed=42,
     ):
+        np.random.seed(random_seed)
         # Store parameters
         self.f = f
         self.out_h = (32 - f) // stride + 1

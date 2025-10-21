@@ -6,4 +6,5 @@ Datasets
 **/build/
 **/__pycache__/
 **.png
+**.pdf
 **.jsonl

@@ -22,18 +22,15 @@ def compute_accuracy(p, y_true):
     return np.mean(predictions == y_true)
 
 
-def apply_label_smoothing(Y, smoothing):
+def apply_label_smoothing(Y, eps):
     """
-    Apply label smoothing to one-hot encoded targets.
+    Apply label smoothing to one-hot encoded targets Y of shape (K, n).
+    eps in [0, 1). For eps=0 returns Y unchanged.
     """
-    if smoothing <= 0.0:
+    if eps <= 0.0:
         return Y
-    K, n = Y.shape
-    smooth_value = smoothing / (K - 1)
-    Y_smooth = np.full((K, n), smooth_value, dtype=np.float32)
-    target_indices = np.argmax(Y, axis=0)
-    Y_smooth[target_indices, np.arange(n)] = 1.0 - smoothing
-    return Y_smooth
+    K = Y.shape[0]
+    return (1.0 - eps) * Y + (eps / (K - 1)) * (1.0 - Y)
 
 
 def to_one_hot(y: np.ndarray):
