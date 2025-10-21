@@ -1,4 +1,3 @@
-from cProfile import label
 from config import REPORT_IMG_DIR, SUMMARY_PATH
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -68,7 +67,7 @@ arch5_label_smoothing = select_iterations_losses_and_acc(
 )
 
 
-def plot_curves(archs, archs_names = ["arch1" ,"arch2", "arch3", "arch4"]):
+def plot_curves(archs, archs_names=["arch1", "arch2", "arch3", "arch4"]):
     for i in range(len(archs)):
         arch_stats = archs[i]
         plt.plot(
@@ -114,7 +113,7 @@ def plot_curves(archs, archs_names = ["arch1" ,"arch2", "arch3", "arch4"]):
 
 
 def plot_compare_times(archs):
-    archs_names = ["arch1" ,"arch2", "arch3", "arch4"]
+    archs_names = ["arch1", "arch2", "arch3", "arch4"]
     counts = [
         archs[0][select_var["time_elapsed"]][-1],
         archs[1][select_var["time_elapsed"]][-1],
@@ -122,17 +121,23 @@ def plot_compare_times(archs):
         archs[3][select_var["time_elapsed"]][-1],
     ]
     colors = ["red", "blue", "orange", "green"]
-    
+
     plt.bar(archs_names, counts, color=colors, label=archs_names)
     plt.xlabel("Architecture")
     plt.ylabel("Seconds")
     plt.title("Training time")
-    plt.savefig(REPORT_IMG_DIR / f"compare_times.pdf")
+    plt.savefig(REPORT_IMG_DIR / "compare_times.pdf")
     plt.clf()
 
 
 if __name__ == "__main__":
     plot_curves([arch1, arch2, arch3, arch4])
     plot_compare_times([arch1, arch2, arch3, arch4])
-    plot_curves([arch2_long, arch3_long, arch2_long_more_filters], archs_names=["arch2_long", "arch3_long", "arch2_long_more_filters"])
-    plot_curves([arch5_baseline, arch5_label_smoothing], archs_names=["arch5_baseline", "arch5_label_smoothing"])
+    plot_curves(
+        [arch2_long, arch3_long, arch2_long_more_filters],
+        archs_names=["arch2_long", "arch3_long", "arch2_long_more_filters"],
+    )
+    plot_curves(
+        [arch5_baseline, arch5_label_smoothing],
+        archs_names=["arch5_baseline", "arch5_label_smoothing"],
+    )
