@@ -226,6 +226,10 @@ We implemented label smoothing as a regularization technique to help improve gen
 
 We can see that using label smoothing helps to reduce the previous problem, as the gap between training and validation loss is smaller compared to the baseline. Analyzing the loss plots, label smoothing helps to stabilize the training process, leading to a smoother decrease of the gap between training and validation loss. Overall, label smoothing proves to be an effective regularization technique that enhances the model's analysis step and generalization capabilities.
 
+\section{How to boost the performance even more}
+
+To further boost the performance of the convolutional neural network on the CIFAR-10 dataset, several strategies can be employed, one of the main problems here was the overfitting of the model. Varying the lambda term would have helped to reduce overfitting even more. Additionally, we could experiment with more advanced architectures, such as deeper networks (adding more convolutional and fully connected layers), imitating architectures like ResNet.
+
 \section{Conclusion}
 
 In this assignment, we explored the implementation and optimization of a convolutional neural network for image classification on the CIFAR-10 dataset. We investigated various techniques, including varying the architecture, using cyclic learning rates, and applying label smoothing.
